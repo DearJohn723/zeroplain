@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A stainless steel model toy product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "object" },
+        "description": { "type": "object" },
+        "details": { "type": "object" },
+        "price": { "type": "number" },
+        "salePrice": { "type": "number" },
+        "images": { "type": "array" },
+        "youtubeId": { "type": "string" },
+        "category": { "type": "object" },
+        "weight": { "type": "string" },
+        "type": { "type": "object" },
+        "dimensions": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "colors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "object" },
+              "images": { "type": "array" }
+            }
+          }
+        }
+      },
+      "required": ["id", "name", "description", "details", "price", "images", "category"]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "A news or event item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "title": { "type": "object" },
+        "content": { "type": "object" },
+        "type": { "type": "string", "enum": ["news", "event"] }
+      },
+      "required": ["id", "date", "title", "content", "type"]
+    },
+    "SiteContent": {
+      "title": "SiteContent",
+      "description": "Global site content and translations",
+      "type": "object",
+      "properties": {
+        "nav": { "type": "object" },
+        "hero": { "type": "object" },
+        "about": { "type": "object" },
+        "theme": { "type": "string", "enum": ["red", "metallic", "blue"] }
+      },
+      "required": ["nav", "hero", "about"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of model products"
+    },
+    "/news/{newsId}": {
+      "schema": "NewsItem",
+      "description": "Collection of news and events"
+    },
+    "/siteConfig/main": {
+      "schema": "SiteContent",
+      "description": "Global site configuration"
+    }
+  }
+}
