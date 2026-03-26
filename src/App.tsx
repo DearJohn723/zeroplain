@@ -38,7 +38,7 @@ import {
 import { 
   onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User 
 } from 'firebase/auth';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
