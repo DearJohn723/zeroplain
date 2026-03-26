@@ -76,6 +76,61 @@ interface FirestoreErrorInfo {
   }
 }
 
+function TechCorner({ className = "" }: { className?: string }) {
+  return (
+    <div className={`tech-corner ${className}`}>
+      <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-red" />
+      <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-red" />
+      <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-red" />
+      <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-red" />
+    </div>
+  );
+}
+
+function GlitchImage({ src, alt, className = "" }: { src: string, alt: string, className?: string }) {
+  return (
+    <div className={`relative overflow-hidden group ${className}`}>
+      <img src={src} alt={alt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none">
+        <div className="absolute inset-0 bg-cyber-red/20 mix-blend-overlay animate-pulse" />
+        <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,212,255,0.1)_50%)] bg-[length:100%_4px] animate-scanline-scroll" />
+      </div>
+    </div>
+  );
+}
+
+function HUDOverlay() {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[60] overflow-hidden opacity-20">
+      {/* Corner Brackets */}
+      <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyber-red/40" />
+      <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyber-red/40" />
+      <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyber-red/40" />
+      <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyber-red/40" />
+      
+      {/* Scanning Line */}
+      <motion.div 
+        animate={{ top: ['-10%', '110%'] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        className="absolute left-0 w-full h-px bg-cyber-red/30 shadow-[0_0_15px_var(--glow-color)]"
+      />
+
+      {/* Tech Data */}
+      <div className="absolute top-1/2 left-6 -translate-y-1/2 flex flex-col gap-8 font-mono text-[8px] text-cyber-red/60 uppercase tracking-[0.3em] vertical-text">
+        <span>LAT: 31.2304° N</span>
+        <span>LNG: 121.4737° E</span>
+        <span>ALT: 42.0M</span>
+      </div>
+      
+      <div className="absolute top-1/2 right-6 -translate-y-1/2 flex flex-col gap-8 font-mono text-[8px] text-cyber-red/60 uppercase tracking-[0.3em] vertical-text">
+        <span>SIGNAL: STABLE</span>
+        <span>SYNC: 99.9%</span>
+        <span>BUFFER: 0.02MS</span>
+      </div>
+    </div>
+  );
+}
+
 function ProductsPage({ 
   products, lang, t, formatPrice, isAdmin, 
   setEditingProduct, deleteProduct, setSelectedProduct, 
@@ -196,6 +251,8 @@ function ProductsPage({
                   className="cyber-card group cursor-pointer relative"
                   onClick={() => setSelectedProduct(product)}
                 >
+                  <div className="cyber-card-glow" />
+                  <TechCorner className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   {isAdmin && (
                     <div className="absolute top-2 left-2 z-20 flex gap-2">
                       <button 
@@ -213,14 +270,16 @@ function ProductsPage({
                     </div>
                   )}
                   <div className="relative aspect-square mb-6 overflow-hidden">
-                    <img 
+                    <GlitchImage 
                       src={product.images?.[0] || 'https://picsum.photos/seed/product/800/800'} 
                       alt={t(product.name)}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
+                      className="w-full h-full"
                     />
-                    <div className="absolute top-4 right-4 bg-cyber-red text-white px-3 py-1 font-display text-xs font-bold">
+                    <div className="absolute top-4 right-4 bg-cyber-red text-white px-3 py-1 font-display text-xs font-bold z-10">
                       {t(product.category)}
+                    </div>
+                    <div className="absolute bottom-2 left-2 font-mono text-[8px] text-white/40 uppercase tracking-widest z-10 bg-black/40 px-1">
+                      ID: {product.id.substring(0, 8)}
                     </div>
                   </div>
                   <h3 className="text-xl mb-2 group-hover:text-cyber-red transition-colors">{t(product.name)}</h3>
@@ -746,11 +805,35 @@ export default function App() {
 
   if (isInitialLoading) {
     return (
-      <div className="fixed inset-0 bg-cyber-dark flex items-center justify-center z-[10000]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-20 h-20 border-2 border-cyber-red border-t-transparent rounded-full animate-spin" />
-          <div className="font-display text-cyber-red animate-pulse tracking-[0.5em] uppercase">
-            Initializing System...
+      <div className="fixed inset-0 bg-cyber-dark flex items-center justify-center z-[10000] overflow-hidden">
+        <div className="hexagon-grid absolute inset-0 opacity-10" />
+        <div className="scanline" />
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative">
+            <div className="w-32 h-32 border border-cyber-red/20 rounded-full animate-[spin_10s_linear_infinite]" />
+            <div className="absolute inset-2 border border-cyber-red/40 rounded-full animate-[spin_6s_linear_infinite_reverse]" />
+            <div className="absolute inset-4 border-2 border-cyber-red border-t-transparent rounded-full animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center font-display text-cyber-red text-xl font-bold">
+              ZP
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="font-display text-cyber-red animate-pulse tracking-[0.5em] uppercase text-sm">
+              Initializing System...
+            </div>
+            <div className="w-64 h-1 bg-white/5 relative overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute top-0 left-0 h-full bg-cyber-red shadow-[0_0_10px_var(--glow-color)]"
+              />
+            </div>
+            <div className="flex gap-4 mt-4 font-mono text-[8px] text-white/20 uppercase tracking-widest">
+              <span>CORE_LOAD: OK</span>
+              <span>MEM_SYNC: OK</span>
+              <span>NET_LINK: OK</span>
+            </div>
           </div>
         </div>
       </div>
@@ -760,7 +843,10 @@ export default function App() {
   return (
     <Router>
       <ScrollToTop />
-      <div className="min-h-screen bg-cyber-dark selection:bg-cyber-red selection:text-white overflow-x-hidden">
+      <div className="min-h-screen bg-cyber-dark selection:bg-cyber-red selection:text-white overflow-x-hidden relative">
+      <div className="noise-bg" />
+      <div className="hexagon-grid fixed inset-0 opacity-10 pointer-events-none" />
+      <HUDOverlay />
       <Toaster position="top-right" theme="dark" richColors />
       <div className="scanline" />
 
@@ -1241,7 +1327,10 @@ export default function App() {
             <div className="inline-block mb-4 px-3 py-1 border border-cyber-red/30 bg-cyber-red/10 text-cyber-red text-[10px] font-mono tracking-[0.3em] uppercase light-trail">
               {t(siteContent.hero.tagline)}
             </div>
-            <h1 className="text-7xl md:text-[12rem] font-black mb-2 tracking-tighter text-white cyber-glow leading-none">
+            <h1 
+              className="text-7xl md:text-[12rem] font-black mb-2 tracking-tighter text-white cyber-glow leading-none glitch-text"
+              data-text={t(siteContent.hero.title)}
+            >
               {t(siteContent.hero.title)}
             </h1>
             <div className="flex items-center justify-center gap-4 mb-12">
@@ -1346,11 +1435,10 @@ export default function App() {
             viewport={{ once: true }}
             className="relative cyber-border p-2"
           >
-            <img 
+            <GlitchImage 
               src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
               alt="Workshop"
-              className="w-full h-[500px] object-cover grayscale hover:grayscale-0 transition-all duration-700"
-              referrerPolicy="no-referrer"
+              className="w-full h-[500px]"
             />
             {isAdmin && (
               <div className="absolute bottom-4 right-4 flex gap-2">
@@ -1467,6 +1555,8 @@ export default function App() {
                 whileHover={{ y: -10 }}
                 onClick={() => setSelectedProduct(product)}
               >
+                <div className="cyber-card-glow" />
+                <TechCorner className="opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 {isAdmin && (
                   <div className="absolute top-2 left-2 z-20 flex gap-2">
                     <button 
@@ -1484,17 +1574,16 @@ export default function App() {
                   </div>
                 )}
                 <div className="relative aspect-square mb-6 overflow-hidden">
-                  <img 
+                  <GlitchImage 
                     src={product.images?.[0] || 'https://picsum.photos/seed/product/800/800'} 
                     alt={t(product.name)}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/product/800/800';
-                    }}
+                    className="w-full h-full"
                   />
-                  <div className="absolute top-4 right-4 bg-cyber-red text-white px-3 py-1 font-display text-xs font-bold">
+                  <div className="absolute top-4 right-4 bg-cyber-red text-white px-3 py-1 font-display text-xs font-bold z-10">
                     {t(product.category)}
+                  </div>
+                  <div className="absolute bottom-2 left-2 font-mono text-[8px] text-white/40 uppercase tracking-widest z-10 bg-black/40 px-1">
+                    ID: {product.id.substring(0, 8)}
                   </div>
                 </div>
                 <h3 className="text-xl mb-2 group-hover:text-cyber-red transition-colors">{t(product.name)}</h3>

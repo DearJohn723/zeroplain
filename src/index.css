@@ -96,6 +96,53 @@
     @apply relative inline-block;
   }
 
+  .glitch-text::before,
+  .glitch-text::after {
+    content: attr(data-text);
+    @apply absolute top-0 left-0 w-full h-full opacity-80;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .glitch-text::before {
+    left: 2px;
+    text-shadow: -2px 0 #ff00c1;
+    animation: glitch-anim-1 2s infinite linear alternate-reverse;
+  }
+
+  .glitch-text::after {
+    left: -2px;
+    text-shadow: -2px 0 #00fff9;
+    animation: glitch-anim-2 3s infinite linear alternate-reverse;
+  }
+
+  @keyframes glitch-anim-1 {
+    0% { clip: rect(30px, 9999px, 10px, 0); }
+    20% { clip: rect(15px, 9999px, 56px, 0); }
+    40% { clip: rect(87px, 9999px, 92px, 0); }
+    60% { clip: rect(21px, 9999px, 43px, 0); }
+    80% { clip: rect(65px, 9999px, 12px, 0); }
+    100% { clip: rect(9px, 9999px, 78px, 0); }
+  }
+
+  @keyframes glitch-anim-2 {
+    0% { clip: rect(12px, 9999px, 85px, 0); }
+    20% { clip: rect(45px, 9999px, 12px, 0); }
+    40% { clip: rect(98px, 9999px, 34px, 0); }
+    60% { clip: rect(10px, 9999px, 67px, 0); }
+    80% { clip: rect(32px, 9999px, 90px, 0); }
+    100% { clip: rect(76px, 9999px, 21px, 0); }
+  }
+
+  .noise-bg {
+    @apply fixed inset-0 pointer-events-none z-[100] opacity-[0.03];
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .hexagon-grid {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 17.32v34.64L30 69.28 0 51.96V17.32L30 0z' fill-opacity='0.05' fill='%2300d4ff' fill-rule='evenodd'/%3E%3C/svg%3E");
+    background-size: 30px 52px;
+  }
+
   .scanline {
     @apply fixed inset-0 pointer-events-none z-50;
     background: linear-gradient(
@@ -103,8 +150,62 @@
       transparent 50%,
       var(--scanline-color) 50%
     );
-    background-size: 100% 2px;
-    opacity: 0.5;
+    background-size: 100% 4px;
+    opacity: 0.3;
+    animation: scanline-scroll 10s linear infinite;
+  }
+
+  @keyframes scanline-scroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+  }
+
+  .cyber-dots {
+    background-image: radial-gradient(var(--color-cyber-red) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.1;
+  }
+
+  .tech-corner {
+    @apply absolute w-8 h-8 border-cyber-red/40;
+  }
+
+  .corner-tl { @apply top-0 left-0 border-t-2 border-l-2; }
+  .corner-tr { @apply top-0 right-0 border-t-2 border-r-2; }
+  .corner-bl { @apply bottom-0 left-0 border-b-2 border-l-2; }
+  .corner-br { @apply bottom-0 right-0 border-b-2 border-r-2; }
+
+  .cyber-card {
+    @apply bg-cyber-gray/50 backdrop-blur-md border border-white/10 p-6 transition-all duration-500 hover:border-cyber-red/50 overflow-hidden relative;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .cyber-card::before {
+    content: '';
+    @apply absolute top-0 left-0 w-full h-full bg-gradient-to-br from-cyber-red/5 to-transparent opacity-0 transition-opacity duration-500;
+  }
+
+  .cyber-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .cyber-card:hover {
+    box-shadow: 0 0 30px var(--glow-color);
+    transform: translateY(-5px);
+  }
+
+  .cyber-card-glow {
+    @apply absolute -inset-px bg-gradient-to-r from-transparent via-cyber-red/20 to-transparent opacity-0 transition-opacity duration-500 pointer-events-none;
+  }
+
+  .cyber-card:hover .cyber-card-glow {
+    @apply opacity-100;
+    animation: scan-horizontal 2s linear infinite;
+  }
+
+  @keyframes scan-horizontal {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
   }
 
   .vertical-text {
@@ -116,12 +217,18 @@
     background-image: 
       linear-gradient(to right, var(--color-cyber-red) 1px, transparent 1px),
       linear-gradient(to bottom, var(--color-cyber-red) 1px, transparent 1px);
-    background-size: 50px 50px;
-    mask-image: radial-gradient(circle at 50% 50%, black, transparent 90%);
-    opacity: 0.05;
-    transform: perspective(1000px) rotateX(60deg) translateY(-100px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(circle at 50% 50%, black, transparent 80%);
+    opacity: 0.1;
+    transform: perspective(1000px) rotateX(65deg) translateY(-200px);
     transform-origin: top;
-    height: 200vh;
+    height: 300vh;
+    animation: grid-move 20s linear infinite;
+  }
+
+  @keyframes grid-move {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 60px; }
   }
 
   .light-trail {

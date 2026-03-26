@@ -3,8 +3,42 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import multer from "multer";
+import * as admin from "firebase-admin";
+import fs from "fs";
 
 dotenv.config();
+
+// Initialize Firebase Admin
+const firebaseConfig = {
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+};
+
+// Fallback to applet config
+if (!firebaseConfig.projectId) {
+  try {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      firebaseConfig.projectId = config.projectId;
+      firebaseConfig.storageBucket = config.storageBucket;
+    }
+  } catch (e) {
+    console.error("Error loading firebase-applet-config.json:", e);
+  }
+}
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: firebaseConfig.projectId,
+    storageBucket: firebaseConfig.storageBucket,
+  });
+}
+
+const bucket = admin.storage().bucket();
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 async function startServer() {
   const app = express();
@@ -67,6 +101,61 @@ async function startServer() {
     } catch (error) {
       console.error("Error sending email:", error);
       res.status(500).json({ error: "Failed to send inquiry email" });
+    }
+  });
+
+  // API route for file uploads (Proxy to Firebase Storage to avoid CORS)
+  app.post("/api/upload", upload.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      const folder = req.body.folder || "general";
+      
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const fileName = `${Date.now()}_${file.originalname}`;
+      const filePath = `${folder}/${fileName}`;
+      const blob = bucket.file(filePath);
+      
+      console.log(`Server uploading ${fileName} to ${folder} via Admin SDK...`);
+      
+      const blobStream = blob.createWriteStream({
+        metadata: {
+          contentType: file.mimetype,
+        },
+        resumable: false,
+      });
+
+      blobStream.on("error", (err) => {
+        console.error("Blob stream error:", err);
+        res.status(500).json({ error: err.message });
+      });
+
+      blobStream.on("finish", async () => {
+        // Make the file public or get a signed URL
+        // For simplicity in this environment, we'll use a public URL if possible
+        // or a long-lived signed URL
+        try {
+          await blob.makePublic();
+          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+          console.log(`Upload successful: ${publicUrl}`);
+          res.status(200).json({ url: publicUrl });
+        } catch (e) {
+          // If makePublic fails (e.g. bucket settings), use a signed URL
+          const [url] = await blob.getSignedUrl({
+            action: 'read',
+            expires: '03-01-2500', // Far future
+          });
+          console.log(`Upload successful (signed URL): ${url}`);
+          res.status(200).json({ url });
+        }
+      });
+
+      blobStream.end(file.buffer);
+    } catch (error: any) {
+      console.error("Server upload error:", error);
+      res.status(500).json({ error: error.message || "Failed to upload file" });
     }
   });
 
