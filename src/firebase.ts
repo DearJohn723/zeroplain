@@ -24,8 +24,22 @@ if (!firebaseConfig.apiKey) {
   }
 }
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+// Initialize Firebase SDK only if config is valid
+let app;
+let db: any;
+let auth: any;
 
+if (firebaseConfig.apiKey) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    auth = getAuth(app);
+  } catch (e) {
+    console.error("Firebase initialization failed:", e);
+  }
+} else {
+  console.warn("Firebase configuration is missing. Some features may not work.");
+}
+
+export { db, auth };
 export default app;

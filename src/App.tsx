@@ -357,6 +357,7 @@ export default function App() {
   }, [window.location.pathname, window.location.hash]);
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       console.log('Auth state changed:', u?.email);
       setUser(u);
@@ -373,6 +374,11 @@ export default function App() {
 
   // Real-time Firestore Sync
   useEffect(() => {
+    if (!db) {
+      console.warn('Firestore database not initialized. Using local defaults.');
+      setIsInitialLoading(false);
+      return;
+    }
     const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as SiteContent;
