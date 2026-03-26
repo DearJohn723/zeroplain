@@ -6,13 +6,23 @@
   --font-display: "Orbitron", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
+  --color-cyber-red: #00d4ff;
+  --color-cyber-crimson: #0088aa;
+  --color-cyber-pink: #00ffff;
+  --color-cyber-yellow: #ff8c00;
+  --color-cyber-dark: #000000;
+  --color-cyber-gray: #050a10;
+  --scanline-color: rgba(0, 212, 255, 0.1);
+  --glow-color: rgba(0, 212, 255, 0.8);
+}
+
+.theme-red {
   --color-cyber-red: #ff003c;
-  --color-cyber-crimson: #990000;
-  --color-cyber-pink: #ff00ff;
   --color-cyber-yellow: #f3ff00;
   --color-cyber-dark: #0a0505;
   --color-cyber-gray: #1a0a0a;
-  --scanline-color: rgba(255, 0, 60, 0.02);
+  --scanline-color: rgba(255, 0, 60, 0.1);
+  --glow-color: rgba(255, 0, 60, 0.8);
 }
 
 .theme-gold {
@@ -20,7 +30,8 @@
   --color-cyber-yellow: #fef3c7;
   --color-cyber-dark: #1a1600;
   --color-cyber-gray: #2d2400;
-  --scanline-color: rgba(251, 191, 36, 0.02);
+  --scanline-color: rgba(251, 191, 36, 0.1);
+  --glow-color: rgba(251, 191, 36, 0.8);
 }
 
 .theme-blue {
@@ -28,7 +39,8 @@
   --color-cyber-yellow: #3b82f6;
   --color-cyber-dark: #000b1e;
   --color-cyber-gray: #001529;
-  --scanline-color: rgba(6, 182, 212, 0.02);
+  --scanline-color: rgba(6, 182, 212, 0.1);
+  --glow-color: rgba(6, 182, 212, 0.8);
 }
 
 @layer base {
@@ -43,25 +55,41 @@
 
 @layer components {
   .cyber-border {
-    @apply border border-cyber-red/30 relative;
+    @apply border border-cyber-red/20 relative;
+    box-shadow: inset 0 0 10px var(--glow-color);
   }
 
   .cyber-border::after {
     content: '';
-    @apply absolute -top-px -left-px w-2 h-2 border-t border-l border-cyber-red;
+    @apply absolute -top-px -left-px w-4 h-4 border-t-2 border-l-2 border-cyber-red;
+    filter: drop-shadow(0 0 5px var(--color-cyber-red));
   }
 
   .cyber-border::before {
     content: '';
-    @apply absolute -bottom-px -right-px w-2 h-2 border-b border-r border-cyber-red;
+    @apply absolute -bottom-px -right-px w-4 h-4 border-b-2 border-r-2 border-cyber-red;
+    filter: drop-shadow(0 0 5px var(--color-cyber-red));
   }
 
   .cyber-button {
-    @apply px-6 py-2 bg-transparent border border-cyber-red text-cyber-red font-display text-sm uppercase tracking-widest transition-all duration-300 hover:bg-cyber-red hover:text-white hover:shadow-[0_0_15px_rgba(255,0,60,0.5)] active:scale-95;
+    @apply px-6 py-2 bg-transparent border border-cyber-red text-cyber-red font-display text-sm uppercase tracking-widest transition-all duration-300 hover:bg-cyber-red hover:text-white hover:shadow-[0_0_15px_var(--glow-color)] active:scale-95;
   }
 
   .cyber-card {
     @apply bg-cyber-gray/50 backdrop-blur-md border border-white/10 p-6 transition-all duration-300 hover:border-cyber-red/50;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .cyber-card:hover {
+    box-shadow: 0 0 20px var(--glow-color);
+  }
+
+  .cyber-glow {
+    filter: drop-shadow(0 0 30px var(--glow-color));
+  }
+
+  .cyber-glow-small {
+    filter: drop-shadow(0 0 10px var(--glow-color));
   }
 
   .glitch-text {
@@ -75,12 +103,46 @@
       transparent 50%,
       var(--scanline-color) 50%
     );
-    background-size: 100% 4px;
+    background-size: 100% 2px;
+    opacity: 0.5;
   }
 
   .vertical-text {
     writing-mode: vertical-rl;
     text-orientation: mixed;
+  }
+
+  .tron-grid {
+    background-image: 
+      linear-gradient(to right, var(--color-cyber-red) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-cyber-red) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(circle at 50% 50%, black, transparent 90%);
+    opacity: 0.05;
+    transform: perspective(1000px) rotateX(60deg) translateY(-100px);
+    transform-origin: top;
+    height: 200vh;
+  }
+
+  .light-trail {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .light-trail::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--color-cyber-red), transparent);
+    animation: trail 3s linear infinite;
+  }
+
+  @keyframes trail {
+    0% { left: -100%; }
+    100% { left: 100%; }
   }
 
   .filter-cyber-red {

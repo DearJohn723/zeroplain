@@ -41,6 +41,7 @@ export interface SiteContent {
     globalAgents: { en: string; zh: string };
   };
   hero: {
+    tagline: { en: string; zh: string };
     title: { en: string; zh: string };
     subtitle: { en: string; zh: string };
     cta: { en: string; zh: string };
@@ -62,5 +63,5 @@ export interface SiteContent {
     ids: string[];
     limit: number;
   };
-  theme?: 'red' | 'gold' | 'blue';
+  theme?: 'red' | 'gold' | 'blue' | 'tron';
 }

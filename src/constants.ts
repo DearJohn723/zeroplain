@@ -10,6 +10,7 @@ export const SITE_CONTENT: SiteContent = {
     globalAgents: { en: 'Global Agents', zh: '寻求全球代理' },
   },
   hero: {
+    tagline: { en: 'EST. 2025 // SHANGHAI_STUDIO', zh: 'EST. 2025 // 上海工作室' },
     title: { en: 'ZERO PLAIN', zh: '龍零' },
     subtitle: { 
       en: 'War Ram Edition: Precision Stainless Steel. Cyberpunk Soul.', 

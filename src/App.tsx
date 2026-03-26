@@ -381,6 +381,7 @@ export default function App() {
           ...DEFAULT_SITE_CONTENT,
           ...data,
           nav: { ...DEFAULT_SITE_CONTENT.nav, ...data.nav },
+          hero: { ...DEFAULT_SITE_CONTENT.hero, ...data.hero },
           globalAgents: data.globalAgents || DEFAULT_SITE_CONTENT.globalAgents,
           homepageProducts: data.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
         });
@@ -595,12 +596,13 @@ export default function App() {
     toast.success('關於我們已更新');
   };
 
-  const saveHero = async (hero: { title: { en: string; zh: string }; subtitle: { en: string; zh: string }; image?: string }) => {
+  const saveHero = async (hero: { tagline: { en: string; zh: string }; title: { en: string; zh: string }; subtitle: { en: string; zh: string }; image?: string }) => {
     if (!isAdmin) return;
     const newContent = {
       ...siteContent,
       hero: {
         ...siteContent.hero,
+        tagline: hero.tagline,
         title: hero.title,
         subtitle: hero.subtitle,
         image: hero.image || siteContent.hero.image
@@ -660,7 +662,7 @@ export default function App() {
     toast.success('首頁商品配置已更新');
   };
 
-  const updateTheme = async (theme: 'red' | 'gold' | 'blue') => {
+  const updateTheme = async (theme: 'red' | 'gold' | 'blue' | 'tron') => {
     console.log('Updating theme to:', theme);
     const newContent = { ...siteContent, theme };
     
@@ -683,8 +685,10 @@ export default function App() {
 
   useEffect(() => {
     console.log('SiteContent updated, current theme:', siteContent.theme);
-    const themeClass = siteContent.theme === 'gold' ? 'theme-gold' : siteContent.theme === 'blue' ? 'theme-blue' : '';
-    document.body.classList.remove('theme-gold', 'theme-blue');
+    const themeClass = siteContent.theme === 'gold' ? 'theme-gold' : 
+                       siteContent.theme === 'blue' ? 'theme-blue' : 
+                       siteContent.theme === 'red' ? 'theme-red' : '';
+    document.body.classList.remove('theme-gold', 'theme-blue', 'theme-red');
     if (themeClass) {
       document.body.classList.add(themeClass);
     }
@@ -713,7 +717,7 @@ export default function App() {
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-cyber-dark/90 backdrop-blur-md border-b border-cyber-red/20 py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-2 relative group">
+          <div className="hidden md:flex items-center gap-2 relative group">
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               {siteContent.logo ? (
                 <img 
@@ -945,10 +949,16 @@ export default function App() {
               
               <div className="pt-4 border-t border-white/10">
                 <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">Site Theme (Global)</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => updateTheme('tron')}
+                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'tron' || !siteContent.theme ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
+                  >
+                    TRON (CYAN)
+                  </button>
                   <button 
                     onClick={() => updateTheme('red')}
-                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'red' || !siteContent.theme ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
+                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'red' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
                   >
                     RED
                   </button>
@@ -1102,6 +1112,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      <div className="fixed top-0 left-0 right-0 z-0 pointer-events-none tron-grid" />
+      <div className="fixed bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-cyber-red/20 to-transparent pointer-events-none z-0 blur-3xl" />
+
         <Routes>
           <Route path="/products" element={
             <ProductsPage 
@@ -1121,11 +1134,11 @@ export default function App() {
             <>
               {/* Hero Section */}
               <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
-        {/* Animated Grid Background */}
-        <div className="absolute inset-0 z-0 opacity-20">
+        {/* Animated Grid Background - Removed in favor of global Tron grid */}
+        <div className="absolute inset-0 z-0 opacity-0">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
         </div>
-
+        
         {/* Decorative Floating Elements */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <motion.div 
@@ -1169,15 +1182,15 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="inline-block mb-4 px-3 py-1 border border-cyber-red/30 bg-cyber-red/10 text-cyber-red text-[10px] font-mono tracking-[0.3em] uppercase">
-              EST. 2025 // SHANGHAI_STUDIO
+            <div className="inline-block mb-4 px-3 py-1 border border-cyber-red/30 bg-cyber-red/10 text-cyber-red text-[10px] font-mono tracking-[0.3em] uppercase light-trail">
+              {t(siteContent.hero.tagline)}
             </div>
-            <h1 className="text-7xl md:text-[12rem] font-black mb-2 tracking-tighter text-white drop-shadow-[0_0_30px_rgba(255,0,60,0.8)] leading-none">
+            <h1 className="text-7xl md:text-[12rem] font-black mb-2 tracking-tighter text-white cyber-glow leading-none">
               {t(siteContent.hero.title)}
             </h1>
             <div className="flex items-center justify-center gap-4 mb-12">
               <div className="h-px w-12 bg-cyber-red/50" />
-              <p className="font-mono text-cyber-red text-sm md:text-xl tracking-[0.4em] uppercase drop-shadow-[0_0_10px_rgba(255,0,60,0.5)]">
+              <p className="font-mono text-cyber-red text-sm md:text-xl tracking-[0.4em] uppercase cyber-glow-small">
                 {t(siteContent.hero.subtitle)}
               </p>
               <div className="h-px w-12 bg-cyber-red/50" />
@@ -1275,13 +1288,12 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="relative"
+            className="relative cyber-border p-2"
           >
-            <div className="absolute -inset-4 border border-cyber-red/20 rounded-lg -z-10" />
             <img 
               src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
               alt="Workshop"
-              className="w-full h-[500px] object-cover rounded-lg grayscale hover:grayscale-0 transition-all duration-700"
+              className="w-full h-[500px] object-cover grayscale hover:grayscale-0 transition-all duration-700"
               referrerPolicy="no-referrer"
             />
             {isAdmin && (
@@ -1296,6 +1308,69 @@ export default function App() {
               </div>
             )}
           </motion.div>
+        </div>
+      </section>
+
+      {/* News & Events Section */}
+      <section id="news" className="py-24 px-6 bg-cyber-gray/20">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-16">
+            <h2 className="text-4xl md:text-6xl text-center flex-1">{t(siteContent.nav.news)}</h2>
+            {isAdmin && (
+              <button 
+                onClick={() => setIsAddingNews(true)}
+                className="cyber-button flex items-center gap-2"
+              >
+                <Plus size={16} /> Add News
+              </button>
+            )}
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-12">
+            <div>
+              <div className="flex items-center gap-4 mb-8">
+                <Newspaper className="text-cyber-pink" />
+                <h3 className="text-2xl">{lang === 'en' ? 'Latest News' : '最新消息'}</h3>
+              </div>
+              <div className="space-y-6">
+                {news.filter(n => n.type === 'news').map(item => (
+                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-pink bg-white/5 hover:bg-white/10 transition-colors">
+                    {isAdmin && (
+                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
+                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
+                      </div>
+                    )}
+                    <div className="text-cyber-pink/60 font-mono text-xs mb-2">{item.date}</div>
+                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
+                    <p className="text-white/60 text-sm">{t(item.content)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-4 mb-8">
+                <Calendar className="text-cyber-yellow" />
+                <h3 className="text-2xl">{lang === 'en' ? 'Upcoming Events' : '近期活动'}</h3>
+              </div>
+              <div className="space-y-6">
+                {news.filter(n => n.type === 'event').map(item => (
+                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-yellow bg-white/5 hover:bg-white/10 transition-colors">
+                    {isAdmin && (
+                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
+                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
+                      </div>
+                    )}
+                    <div className="text-cyber-yellow/60 font-mono text-xs mb-2">{item.date}</div>
+                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
+                    <p className="text-white/60 text-sm">{t(item.content)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1385,69 +1460,6 @@ export default function App() {
                 </div>
               </motion.div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* News & Events Section */}
-      <section id="news" className="py-24 px-6 bg-cyber-gray/20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-16">
-            <h2 className="text-4xl md:text-6xl text-center flex-1">{t(siteContent.nav.news)}</h2>
-            {isAdmin && (
-              <button 
-                onClick={() => setIsAddingNews(true)}
-                className="cyber-button flex items-center gap-2"
-              >
-                <Plus size={16} /> Add News
-              </button>
-            )}
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <div className="flex items-center gap-4 mb-8">
-                <Newspaper className="text-cyber-pink" />
-                <h3 className="text-2xl">{lang === 'en' ? 'Latest News' : '最新消息'}</h3>
-              </div>
-              <div className="space-y-6">
-                {news.filter(n => n.type === 'news').map(item => (
-                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-pink bg-white/5 hover:bg-white/10 transition-colors">
-                    {isAdmin && (
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
-                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                    <div className="text-cyber-pink/60 font-mono text-xs mb-2">{item.date}</div>
-                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
-                    <p className="text-white/60 text-sm">{t(item.content)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-4 mb-8">
-                <Calendar className="text-cyber-yellow" />
-                <h3 className="text-2xl">{lang === 'en' ? 'Upcoming Events' : '近期活动'}</h3>
-              </div>
-              <div className="space-y-6">
-                {news.filter(n => n.type === 'event').map(item => (
-                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-yellow bg-white/5 hover:bg-white/10 transition-colors">
-                    {isAdmin && (
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
-                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                    <div className="text-cyber-yellow/60 font-mono text-xs mb-2">{item.date}</div>
-                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
-                    <p className="text-white/60 text-sm">{t(item.content)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -2231,11 +2243,22 @@ export default function App() {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 saveHero({
+                  tagline: { en: formData.get('tagline_en') as string, zh: formData.get('tagline_zh') as string },
                   title: { en: formData.get('title_en') as string, zh: formData.get('title_zh') as string },
                   subtitle: { en: formData.get('subtitle_en') as string, zh: formData.get('subtitle_zh') as string },
                   image: formData.get('image_url') as string
                 });
               }} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Tagline (EN)</label>
+                    <input name="tagline_en" defaultValue={siteContent.hero.tagline?.en || 'EST. 2025 // SHANGHAI_STUDIO'} className="w-full bg-black/50 border border-white/10 p-2 text-sm" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Tagline (ZH)</label>
+                    <input name="tagline_zh" defaultValue={siteContent.hero.tagline?.zh || 'EST. 2025 // 上海工作室'} className="w-full bg-black/50 border border-white/10 p-2 text-sm" required />
+                  </div>
+                </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-white/50 mb-2">Title (EN)</label>
