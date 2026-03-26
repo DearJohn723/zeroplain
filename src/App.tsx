@@ -10,7 +10,7 @@ import {
   Play, Info, Calendar, Newspaper, ArrowRight,
   Instagram, Twitter, Facebook, Mail, ExternalLink,
   Settings, LogIn, LogOut, Plus, Trash2, Edit,
-  Check, Layout, ArrowUpDown, Filter, ChevronLeft
+  Check, Layout, ArrowUpDown, Filter, ChevronLeft, Users
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Language, Product, ProductColor, NewsItem, SiteContent } from './types';
@@ -33,7 +33,7 @@ const CURRENCY_SYMBOLS = {
 import { db, auth } from './firebase';
 import { 
   collection, onSnapshot, doc, setDoc, deleteDoc, 
-  getDoc, getDocs, writeBatch, query, orderBy 
+  getDoc, getDocs, writeBatch, query, orderBy, serverTimestamp 
 } from 'firebase/firestore';
 import { 
   onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User 
@@ -306,6 +306,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isManagingAdmins, setIsManagingAdmins] = useState(false);
+  const [allUsers, setAllUsers] = useState<{id: string, email: string, role: string}[]>([]);
 
   // Editing States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -357,20 +359,38 @@ export default function App() {
   }, [window.location.pathname, window.location.hash]);
 
   useEffect(() => {
-    if (!auth) return;
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    if (!auth || !db) return;
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       console.log('Auth state changed:', u?.email);
       setUser(u);
-      if (u && (u.email?.toLowerCase() === 'john@greatidea.tw' || u.email?.toLowerCase().endsWith('@greatidea.tw'))) {
-        console.log('User is admin');
-        setIsAdmin(true);
+      if (u) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', u.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setIsAdmin(userData.role === 'admin');
+          } else {
+            // Bootstrap first admin
+            const isDefaultAdmin = u.email?.toLowerCase() === 'john@greatidea.tw' || u.email?.toLowerCase().endsWith('@greatidea.tw');
+            const role = isDefaultAdmin ? 'admin' : 'user';
+            await setDoc(doc(db, 'users', u.uid), {
+              email: u.email,
+              role: role,
+              createdAt: serverTimestamp()
+            });
+            setIsAdmin(role === 'admin');
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+          const isDefaultAdmin = u.email?.toLowerCase() === 'john@greatidea.tw' || u.email?.toLowerCase().endsWith('@greatidea.tw');
+          setIsAdmin(isDefaultAdmin);
+        }
       } else {
-        console.log('User is NOT admin');
         setIsAdmin(false);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [db]);
 
   // Real-time Firestore Sync
   useEffect(() => {
@@ -689,6 +709,30 @@ export default function App() {
     }
   };
 
+  const toggleUserRole = async (userId: string, currentRole: string) => {
+    if (!isAdmin || !db) return;
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    try {
+      await setDoc(doc(db, 'users', userId), { role: newRole }, { merge: true });
+      toast.success(`User role updated to ${newRole}`);
+      // Refresh user list
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const usersList = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setAllUsers(usersList);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userId}`);
+    }
+  };
+
+  useEffect(() => {
+    if (isManagingAdmins && db) {
+      getDocs(collection(db, 'users')).then(snap => {
+        const usersList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        setAllUsers(usersList);
+      }).catch(e => handleFirestoreError(e, OperationType.GET, 'users'));
+    }
+  }, [isManagingAdmins, db]);
+
   useEffect(() => {
     console.log('SiteContent updated, current theme:', siteContent.theme);
     const themeClass = siteContent.theme === 'gold' ? 'theme-gold' : 
@@ -945,6 +989,12 @@ export default function App() {
                 className="w-full py-2 bg-cyber-red text-white text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2"
               >
                 <Layout size={14} /> Configure Homepage
+              </button>
+              <button 
+                onClick={() => { setIsManagingAdmins(true); setShowAdminPanel(false); }}
+                className="w-full py-2 bg-white text-black text-xs uppercase tracking-widest hover:bg-cyber-yellow transition-all flex items-center justify-center gap-2"
+              >
+                <Users size={14} /> Manage Admins
               </button>
               <button 
                 onClick={seedDatabase}
@@ -1952,6 +2002,86 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Admin Management Modal */}
+      <AnimatePresence>
+        {isManagingAdmins && (
+          <motion.div 
+            key="admin-management-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-cyber-dark/95 backdrop-blur-md"
+          >
+            <div className="bg-cyber-gray border border-cyber-yellow p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-2xl font-display text-cyber-yellow flex items-center gap-3">
+                  <Users /> MANAGE ADMINISTRATORS
+                </h3>
+                <button onClick={() => setIsManagingAdmins(false)} className="text-white/50 hover:text-white transition-colors"><X /></button>
+              </div>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-white/70 mb-6">
+                  {lang === 'en' 
+                    ? 'Admins can edit products, news, and site configuration. Use caution when granting admin access.' 
+                    : '管理員可以編輯產品、新聞和網站配置。授予管理員權限時請謹慎。'}
+                </p>
+                
+                <div className="border border-white/10 overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-white/5 text-cyber-yellow uppercase text-[10px] tracking-widest">
+                      <tr>
+                        <th className="p-4">Email</th>
+                        <th className="p-4">Role</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {allUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-mono text-xs">{u.email}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-0.5 text-[10px] uppercase tracking-tighter rounded ${u.role === 'admin' ? 'bg-cyber-yellow text-black' : 'bg-white/10 text-white/50'}`}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            {u.email !== user?.email && (
+                              <button 
+                                onClick={() => toggleUserRole(u.id, u.role)}
+                                className="text-[10px] uppercase tracking-widest border border-white/20 px-3 py-1 hover:bg-white hover:text-black transition-all"
+                              >
+                                {u.role === 'admin' ? 'Demote' : 'Promote to Admin'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {allUsers.length === 0 && (
+                  <div className="text-center py-12 text-white/30 italic">
+                    No users found in database.
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-white/10 flex justify-end">
+                <button 
+                  onClick={() => setIsManagingAdmins(false)}
+                  className="px-8 py-3 bg-cyber-yellow text-black font-display text-sm hover:bg-white transition-all"
+                >
+                  DONE
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Product Edit Modal */}
       <AnimatePresence>
         {(editingProduct || isAddingProduct) && (

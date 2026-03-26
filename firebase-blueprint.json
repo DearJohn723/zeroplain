@@ -55,6 +55,17 @@
         "theme": { "type": "string", "enum": ["red", "metallic", "blue"] }
       },
       "required": ["nav", "hero", "about"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the application with a role",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
     }
   },
   "firestore": {
@@ -69,6 +80,10 @@
     "/siteConfig/main": {
       "schema": "SiteContent",
       "description": "Global site configuration"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of users and their roles"
     }
   }
 }
