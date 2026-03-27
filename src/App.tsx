@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu, X, Globe, ChevronRight, 
@@ -451,6 +451,8 @@ export default function App() {
     return () => unsubscribe();
   }, [db]);
 
+  const dataLoadedFromProxy = useRef(false);
+
   // Real-time Firestore Sync
   useEffect(() => {
     if (!db) {
@@ -458,10 +460,12 @@ export default function App() {
       setIsInitialLoading(false);
       return;
     }
+
     const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap) => {
+      if (dataLoadedFromProxy.current) return; // Ignore if proxy data is already active
+      
       if (docSnap.exists()) {
         const data = docSnap.data() as SiteContent;
-        // Merge with defaults to ensure new fields are present
         setSiteContent({
           ...DEFAULT_SITE_CONTENT,
           ...data,
@@ -470,24 +474,32 @@ export default function App() {
           globalAgents: data.globalAgents || DEFAULT_SITE_CONTENT.globalAgents,
           homepageProducts: data.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
         });
+        setIsInitialLoading(false);
       } else if (isAdmin && !hasInitialized) {
-        // Initialize with default content if it's a new database and user is admin
         setDoc(doc(db, 'siteConfig', 'main'), DEFAULT_SITE_CONTENT).catch(e => handleFirestoreError(e, OperationType.WRITE, 'siteConfig/main'));
         setHasInitialized(true);
+        setIsInitialLoading(false);
       }
-      setIsInitialLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'siteConfig/main');
-      setIsInitialLoading(false);
+      if (!dataLoadedFromProxy.current) {
+        handleFirestoreError(error, OperationType.GET, 'siteConfig/main');
+        // Don't set loading to false immediately, let the timeout/proxy handle it
+      }
     });
 
     const unsubProducts = onSnapshot(query(collection(db, 'products')), (snapshot) => {
+      if (dataLoadedFromProxy.current) return;
+      
       if (!snapshot.empty) {
         setProducts(snapshot.docs.map(d => d.data() as Product));
       } else {
-        setProducts([]);
+        // Only set empty if we're sure it's not a connection issue
+        // If snapshot is empty but from cache while offline, it might be misleading
+        if (snapshot.metadata.fromCache === false || products.length > 0) {
+          setProducts([]);
+        }
+        
         if (isAdmin && !hasInitialized) {
-          // Initialize products if empty and admin
           const batch = writeBatch(db);
           DEFAULT_PRODUCTS.forEach(p => {
             batch.set(doc(db, 'products', p.id), p);
@@ -495,15 +507,23 @@ export default function App() {
           batch.commit().then(() => setHasInitialized(true)).catch(e => handleFirestoreError(e, OperationType.WRITE, 'products-batch'));
         }
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'products'));
+    }, (error) => {
+      if (!dataLoadedFromProxy.current) {
+        handleFirestoreError(error, OperationType.GET, 'products');
+      }
+    });
 
     const unsubNews = onSnapshot(query(collection(db, 'news')), (snapshot) => {
+      if (dataLoadedFromProxy.current) return;
+      
       if (!snapshot.empty) {
         setNews(snapshot.docs.map(d => d.data() as NewsItem).sort((a, b) => b.date.localeCompare(a.date)));
       } else {
-        setNews([]);
+        if (snapshot.metadata.fromCache === false || news.length > 0) {
+          setNews([]);
+        }
+        
         if (isAdmin) {
-          // Initialize news if empty and admin
           const batch = writeBatch(db);
           DEFAULT_NEWS.forEach(n => {
             batch.set(doc(db, 'news', n.id), n);
@@ -511,11 +531,15 @@ export default function App() {
           batch.commit().catch(e => handleFirestoreError(e, OperationType.WRITE, 'news-batch'));
         }
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'news'));
+    }, (error) => {
+      if (!dataLoadedFromProxy.current) {
+        handleFirestoreError(error, OperationType.GET, 'news');
+      }
+    });
 
     // Add a timeout to force loading to finish if database is unreachable (e.g. in Mainland China)
     const timeout = setTimeout(async () => {
-      if (isInitialLoading) {
+      if (isInitialLoading && !dataLoadedFromProxy.current) {
         console.warn('Firestore connection timeout. Attempting to fetch via server proxy...');
         try {
           const response = await fetch('/api/data');
@@ -533,6 +557,7 @@ export default function App() {
                 homepageProducts: data.siteConfig.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
               });
             }
+            dataLoadedFromProxy.current = true;
             setIsInitialLoading(false);
             toast.success(lang === 'en' ? 'Connected via system proxy.' : '已透過系統代理伺服器連線。');
           } else {
@@ -544,7 +569,7 @@ export default function App() {
           toast.info(lang === 'en' ? 'Database connection slow. Using local data.' : '資料庫連線較慢，正使用本地預設資料。');
         }
       }
-    }, 6000); // 6 seconds timeout
+    }, 4000); // Reduced to 4 seconds for faster fallback
 
     return () => {
       clearTimeout(timeout);

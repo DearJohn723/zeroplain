@@ -101,7 +101,7 @@ async function startServer() {
 
     const mailOptions = {
       from: SMTP_USER,
-      to: INQUIRY_DESTINATION_EMAIL || "wesley723@163.com",
+      to: INQUIRY_DESTINATION_EMAIL || "john@greatidea.tw",
       subject: `New Inquiry from ${name} (${country})`,
       text: `
         New Inquiry Details:
