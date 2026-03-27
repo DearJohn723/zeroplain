@@ -38,7 +38,9 @@ import {
 import { 
   onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User 
 } from 'firebase/auth';
-import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { 
+  Routes, Route, Link, useLocation, useNavigate 
+} from 'react-router-dom';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -358,6 +360,8 @@ export default function App() {
     throw new Error(JSON.stringify(errInfo));
   }
 
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(null);
@@ -406,16 +410,24 @@ export default function App() {
 
   // Handle hash scrolling on route change
   useEffect(() => {
-    if (window.location.hash) {
-      const id = window.location.hash.substring(1);
+    if (location.hash) {
+      const id = location.hash.substring(1);
       setTimeout(() => {
         const element = document.getElementById(id);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
       }, 500); // Wait for content to load
+    } else if (sessionStorage.getItem('scrollToContact') === 'true') {
+      sessionStorage.removeItem('scrollToContact');
+      setTimeout(() => {
+        const element = document.getElementById('contact');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
     }
-  }, [window.location.pathname, window.location.hash]);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     if (!auth || !db) return;
@@ -900,7 +912,7 @@ export default function App() {
   }
 
   return (
-    <Router>
+    <>
       <ScrollToTop />
       <div className="min-h-screen bg-cyber-dark selection:bg-cyber-red selection:text-white overflow-x-hidden relative">
       <div className="noise-bg" />
@@ -982,15 +994,22 @@ export default function App() {
                 return (
                   <Link 
                     key={key} 
-                    to={key === 'home' ? '/' : `/#${key}`}
+                    to={key === 'home' ? '/' : (['products', 'agent', 'about', 'news'].includes(key) ? `/${key}` : '/')}
                     className="font-display text-xs uppercase tracking-widest text-white/70 hover:text-cyber-red transition-colors"
                     onClick={(e) => {
-                      if (window.location.pathname === '/' && key !== 'home') {
-                        e.preventDefault();
-                        const element = document.getElementById(key);
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth' });
+                      if (key === 'contact') {
+                        if (location.pathname === '/') {
+                          e.preventDefault();
+                          const element = document.getElementById('contact');
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        } else {
+                          sessionStorage.setItem('scrollToContact', 'true');
                         }
+                      } else if (location.pathname === '/' && key === 'home') {
+                        e.preventDefault();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                       }
                     }}
                   >
@@ -2892,6 +2911,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
-    </Router>
+    </>
   );
 }
