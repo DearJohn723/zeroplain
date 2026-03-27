@@ -818,7 +818,7 @@ export default function App() {
     toast.success('首頁商品配置已更新');
   };
 
-  const updateTheme = async (theme: 'red' | 'gold' | 'blue' | 'tron') => {
+  const updateTheme = async (theme: 'red' | 'orange' | 'blue' | 'tron' | 'black') => {
     console.log('Updating theme to:', theme);
     const newContent = { ...siteContent, theme };
     
@@ -865,10 +865,11 @@ export default function App() {
 
   useEffect(() => {
     console.log('SiteContent updated, current theme:', siteContent.theme);
-    const themeClass = siteContent.theme === 'gold' ? 'theme-gold' : 
+    const themeClass = siteContent.theme === 'orange' ? 'theme-orange' : 
                        siteContent.theme === 'blue' ? 'theme-blue' : 
+                       siteContent.theme === 'black' ? 'theme-black' : 
                        siteContent.theme === 'red' ? 'theme-red' : '';
-    document.body.classList.remove('theme-gold', 'theme-blue', 'theme-red');
+    document.body.classList.remove('theme-gold', 'theme-orange', 'theme-blue', 'theme-red', 'theme-black');
     if (themeClass) {
       document.body.classList.add(themeClass);
     }
@@ -1079,8 +1080,9 @@ export default function App() {
             <div className="flex gap-1.5">
               {[
                 { id: 'red', color: 'bg-cyber-red', label: 'R-01' },
-                { id: 'gold', color: 'bg-[#fbbf24]', label: 'G-02' },
-                { id: 'blue', color: 'bg-[#06b6d4]', label: 'B-03' }
+                { id: 'orange', color: 'bg-[#ff8c00]', label: 'O-02' },
+                { id: 'blue', color: 'bg-[#06b6d4]', label: 'B-03' },
+                { id: 'black', color: 'bg-white', label: 'D-04' }
               ].map((t) => (
                 <button 
                   key={t.id}
@@ -1180,19 +1182,25 @@ export default function App() {
                     onClick={() => updateTheme('red')}
                     className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'red' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
                   >
-                    RED
+                    RED-PURPLE
                   </button>
                   <button 
-                    onClick={() => updateTheme('gold')}
-                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'gold' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
+                    onClick={() => updateTheme('orange')}
+                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'orange' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
                   >
-                    GOLD
+                    ORANGE
                   </button>
                   <button 
                     onClick={() => updateTheme('blue')}
                     className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'blue' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
                   >
                     BLUE
+                  </button>
+                  <button 
+                    onClick={() => updateTheme('black')}
+                    className={`py-1 text-[10px] border font-display transition-all ${siteContent.theme === 'black' ? 'border-cyber-red text-cyber-red bg-cyber-red/10' : 'border-white/10 text-white/50 hover:border-white/30'}`}
+                  >
+                    BLACK
                   </button>
                 </div>
               </div>
@@ -1291,8 +1299,9 @@ export default function App() {
               <div className="flex gap-4">
                 {[
                   { id: 'red', color: 'bg-cyber-red', label: 'RED-01' },
-                  { id: 'gold', color: 'bg-[#fbbf24]', label: 'GOLD-02' },
-                  { id: 'blue', color: 'bg-[#06b6d4]', label: 'BLUE-03' }
+                  { id: 'orange', color: 'bg-[#ff8c00]', label: 'ORANGE-02' },
+                  { id: 'blue', color: 'bg-[#06b6d4]', label: 'BLUE-03' },
+                  { id: 'black', color: 'bg-white', label: 'BLACK-04' }
                 ].map((t) => (
                   <button 
                     key={t.id}

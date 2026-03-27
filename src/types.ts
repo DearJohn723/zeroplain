@@ -63,5 +63,5 @@ export interface SiteContent {
     ids: string[];
     limit: number;
   };
-  theme?: 'red' | 'gold' | 'blue' | 'tron';
+  theme?: 'red' | 'orange' | 'blue' | 'tron' | 'black';
 }

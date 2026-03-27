@@ -17,21 +17,30 @@
 }
 
 .theme-red {
-  --color-cyber-red: #ff003c;
+  --color-cyber-red: #ff007f;
   --color-cyber-yellow: #f3ff00;
   --color-cyber-dark: #0a0505;
   --color-cyber-gray: #1a0a0a;
-  --scanline-color: rgba(255, 0, 60, 0.1);
-  --glow-color: rgba(255, 0, 60, 0.8);
+  --scanline-color: rgba(255, 0, 127, 0.1);
+  --glow-color: rgba(255, 0, 127, 0.8);
 }
 
-.theme-gold {
-  --color-cyber-red: #fbbf24;
+.theme-orange {
+  --color-cyber-red: #ff8c00;
   --color-cyber-yellow: #fef3c7;
-  --color-cyber-dark: #1a1600;
-  --color-cyber-gray: #2d2400;
-  --scanline-color: rgba(251, 191, 36, 0.1);
-  --glow-color: rgba(251, 191, 36, 0.8);
+  --color-cyber-dark: #1a0f00;
+  --color-cyber-gray: #2d1a00;
+  --scanline-color: rgba(255, 140, 0, 0.1);
+  --glow-color: rgba(255, 140, 0, 0.8);
+}
+
+.theme-black {
+  --color-cyber-red: #ffffff;
+  --color-cyber-yellow: #888888;
+  --color-cyber-dark: #000000;
+  --color-cyber-gray: #0a0a0a;
+  --scanline-color: rgba(255, 255, 255, 0.05);
+  --glow-color: rgba(255, 255, 255, 0.3);
 }
 
 .theme-blue {
