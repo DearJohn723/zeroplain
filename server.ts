@@ -4,7 +4,9 @@ import path from "path";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import multer from "multer";
-import * as admin from "firebase-admin";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import fs from "fs";
 
 dotenv.config();
@@ -29,14 +31,15 @@ if (!firebaseConfig.projectId) {
   }
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
+if (!getApps().length) {
+  initializeApp({
     projectId: firebaseConfig.projectId,
     storageBucket: firebaseConfig.storageBucket,
   });
 }
 
-const bucket = admin.storage().bucket();
+const db = getFirestore();
+const bucket = getStorage().bucket();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -45,6 +48,24 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // API route for fetching all site data (Proxy to Firestore to avoid blocking in China)
+  app.get("/api/data", async (req, res) => {
+    try {
+      const productsSnap = await db.collection("products").get();
+      const newsSnap = await db.collection("news").get();
+      const siteConfigSnap = await db.doc("siteConfig/main").get();
+
+      const products = productsSnap.docs.map(d => d.data());
+      const news = newsSnap.docs.map(d => d.data());
+      const siteConfig = siteConfigSnap.exists ? siteConfigSnap.data() : null;
+
+      res.status(200).json({ products, news, siteConfig });
+    } catch (error: any) {
+      console.error("Server data fetch error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch data" });
+    }
+  });
 
   // API route for inquiries
   app.post("/api/inquiry", async (req, res) => {

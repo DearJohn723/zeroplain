@@ -513,12 +513,46 @@ export default function App() {
       }
     }, (error) => handleFirestoreError(error, OperationType.GET, 'news'));
 
+    // Add a timeout to force loading to finish if database is unreachable (e.g. in Mainland China)
+    const timeout = setTimeout(async () => {
+      if (isInitialLoading) {
+        console.warn('Firestore connection timeout. Attempting to fetch via server proxy...');
+        try {
+          const response = await fetch('/api/data');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.products && data.products.length > 0) setProducts(data.products);
+            if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
+            if (data.siteConfig) {
+              setSiteContent({
+                ...DEFAULT_SITE_CONTENT,
+                ...data.siteConfig,
+                nav: { ...DEFAULT_SITE_CONTENT.nav, ...data.siteConfig.nav },
+                hero: { ...DEFAULT_SITE_CONTENT.hero, ...data.siteConfig.hero },
+                globalAgents: data.siteConfig.globalAgents || DEFAULT_SITE_CONTENT.globalAgents,
+                homepageProducts: data.siteConfig.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
+              });
+            }
+            setIsInitialLoading(false);
+            toast.success(lang === 'en' ? 'Connected via system proxy.' : '已透過系統代理伺服器連線。');
+          } else {
+            throw new Error('Proxy fetch failed');
+          }
+        } catch (e) {
+          console.warn('Proxy fetch failed. Using local defaults.');
+          setIsInitialLoading(false);
+          toast.info(lang === 'en' ? 'Database connection slow. Using local data.' : '資料庫連線較慢，正使用本地預設資料。');
+        }
+      }
+    }, 6000); // 6 seconds timeout
+
     return () => {
+      clearTimeout(timeout);
       unsubSite();
       unsubProducts();
       unsubNews();
     };
-  }, [isAdmin]);
+  }, [isAdmin, isInitialLoading, lang]);
 
   useEffect(() => {
     console.log('Products state updated:', products.length, 'products found.');
@@ -1394,8 +1428,8 @@ export default function App() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-24 px-6 bg-cyber-gray/30">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+      <section id="about" className="py-24 px-6 relative overflow-hidden matrix-bg">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center relative z-10">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -1478,7 +1512,7 @@ export default function App() {
               </div>
               <div className="space-y-6">
                 {news.filter(n => n.type === 'news').map(item => (
-                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-pink bg-white/5 hover:bg-white/10 transition-colors">
+                  <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-pink transition-colors">
                     {isAdmin && (
                       <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
@@ -1500,7 +1534,7 @@ export default function App() {
               </div>
               <div className="space-y-6">
                 {news.filter(n => n.type === 'event').map(item => (
-                  <div key={item.id} className="group relative p-6 border-l-2 border-cyber-yellow bg-white/5 hover:bg-white/10 transition-colors">
+                  <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-yellow transition-colors">
                     {isAdmin && (
                       <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
@@ -1573,7 +1607,7 @@ export default function App() {
                     </button>
                   </div>
                 )}
-                <div className="relative aspect-square mb-6 overflow-hidden">
+                <div className="relative aspect-square mb-6 overflow-hidden hologram-effect">
                   <GlitchImage 
                     src={product.images?.[0] || 'https://picsum.photos/seed/product/800/800'} 
                     alt={t(product.name)}

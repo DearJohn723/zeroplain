@@ -259,5 +259,62 @@
   .filter-white {
     filter: brightness(0) invert(1);
   }
+
+  .hologram-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hologram-effect::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    background-size: 100% 4px;
+    animation: scanline-move 4s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scanline-move {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .cyber-terminal {
+    font-family: 'Courier New', Courier, monospace;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+    position: relative;
+    padding-left: 25px;
+  }
+
+  .cyber-terminal::before {
+    content: ">_";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    color: #ff0000;
+    font-weight: bold;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .matrix-bg {
+    background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)), url('https://picsum.photos/seed/matrix/1920/1080');
+    background-blend-mode: overlay;
+    background-size: cover;
+  }
 }
 
