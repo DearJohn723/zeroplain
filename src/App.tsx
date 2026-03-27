@@ -1428,8 +1428,8 @@ export default function App() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-24 px-6 relative overflow-hidden matrix-bg">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center relative z-10">
+      <section id="about" className="py-24 px-6 bg-cyber-gray/30">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
