@@ -11,52 +11,82 @@ import fs from "fs";
 
 dotenv.config();
 
-// Initialize Firebase Admin
-const firebaseConfig = {
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-};
+let db: any;
+let bucket: any;
+let isFirebaseInitialized = false;
 
-// Fallback to applet config
-if (!firebaseConfig.projectId) {
-  try {
-    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      firebaseConfig.projectId = config.projectId;
-      firebaseConfig.storageBucket = config.storageBucket;
+function initializeFirebaseAdmin() {
+  if (isFirebaseInitialized) return;
+  
+  const firebaseConfig = {
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  };
+
+  if (!firebaseConfig.projectId) {
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        firebaseConfig.projectId = config.projectId;
+        firebaseConfig.storageBucket = config.storageBucket;
+      }
+    } catch (e) {
+      console.error("Error loading firebase-applet-config.json:", e);
     }
+  }
+
+  if (!getApps().length && firebaseConfig.projectId) {
+    initializeApp({
+      projectId: firebaseConfig.projectId,
+      storageBucket: firebaseConfig.storageBucket,
+    });
+  }
+  
+  try {
+    db = getFirestore();
+    bucket = getStorage().bucket();
+    isFirebaseInitialized = true;
   } catch (e) {
-    console.error("Error loading firebase-applet-config.json:", e);
+    console.error("Firebase Admin initialization failed:", e);
   }
 }
-
-if (!getApps().length) {
-  initializeApp({
-    projectId: firebaseConfig.projectId,
-    storageBucket: firebaseConfig.storageBucket,
-  });
-}
-
-const db = getFirestore();
-const bucket = getStorage().bucket();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 export const app = express();
+let isAppConfigured = false;
 
 async function configureApp() {
+  if (isAppConfigured) return;
+  
   app.use(express.json());
 
-  // API route for fetching all site data (Proxy to Firestore to avoid blocking in China)
+  // Test route to verify API is working
+  app.get("/api/test", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      message: "API is working on Vercel",
+      env: {
+        hasSmtpHost: !!process.env.SMTP_HOST,
+        hasSmtpUser: !!process.env.SMTP_USER,
+        nodeEnv: process.env.NODE_ENV
+      }
+    });
+  });
+
+  // API route for fetching all site data
   app.get("/api/data", async (req, res) => {
     try {
+      initializeFirebaseAdmin();
+      if (!db) throw new Error("Database not initialized");
+      
       const productsSnap = await db.collection("products").get();
       const newsSnap = await db.collection("news").get();
       const siteConfigSnap = await db.doc("siteConfig/main").get();
 
-      const products = productsSnap.docs.map(d => d.data());
-      const news = newsSnap.docs.map(d => d.data());
+      const products = productsSnap.docs.map((d: any) => d.data());
+      const news = newsSnap.docs.map((d: any) => d.data());
       const siteConfig = siteConfigSnap.exists ? siteConfigSnap.data() : null;
 
       res.status(200).json({ products, news, siteConfig });
@@ -138,6 +168,9 @@ async function configureApp() {
   // API route for file uploads (Proxy to Firebase Storage to avoid CORS)
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
+      initializeFirebaseAdmin();
+      if (!bucket) throw new Error("Storage not initialized");
+      
       const file = req.file;
       const folder = req.body.folder || "general";
       
@@ -164,21 +197,15 @@ async function configureApp() {
       });
 
       blobStream.on("finish", async () => {
-        // Make the file public or get a signed URL
-        // For simplicity in this environment, we'll use a public URL if possible
-        // or a long-lived signed URL
         try {
           await blob.makePublic();
           const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-          console.log(`Upload successful: ${publicUrl}`);
           res.status(200).json({ url: publicUrl });
         } catch (e) {
-          // If makePublic fails (e.g. bucket settings), use a signed URL
           const [url] = await blob.getSignedUrl({
             action: 'read',
-            expires: '03-01-2500', // Far future
+            expires: '03-01-2500',
           });
-          console.log(`Upload successful (signed URL): ${url}`);
           res.status(200).json({ url });
         }
       });
@@ -190,20 +217,23 @@ async function configureApp() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // Vite middleware for development (Skip on Vercel production)
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
+    // Only serve static files if we are NOT on Vercel (Vercel handles this)
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+  
+  isAppConfigured = true;
 }
 
 export async function getApp() {
