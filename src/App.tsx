@@ -1761,7 +1761,8 @@ export default function App() {
                   
                   if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.details || errorData.error || 'Failed to send inquiry');
+                    const errorMessage = errorData.message || errorData.error || `Server Error (${response.status})`;
+                    throw new Error(errorMessage);
                   }
                   
                   const result = await response.json();
@@ -2219,7 +2220,8 @@ export default function App() {
                   
                   if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.details || errorData.error || 'Failed to send inquiry');
+                    const errorMessage = errorData.message || errorData.error || `Server Error (${response.status})`;
+                    throw new Error(errorMessage);
                   }
                   
                   toast.success(lang === 'en' ? 'Inquiry sent successfully!' : '需求單已成功送出！');

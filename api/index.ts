@@ -108,7 +108,7 @@ app.post("/api/inquiry", async (req, res) => {
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: parseInt(SMTP_PORT || "465"),
-    secure: SMTP_PORT === "465",
+    secure: (SMTP_PORT || "465") === "465",
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
 
