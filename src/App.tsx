@@ -383,6 +383,8 @@ export default function App() {
   const [isEditingContact, setIsEditingContact] = useState(false);
   const [isEditingGlobalAgents, setIsEditingGlobalAgents] = useState(false);
   const [isEditingHomepageProducts, setIsEditingHomepageProducts] = useState(false);
+  const [isQuickInquiryModalOpen, setIsQuickInquiryModalOpen] = useState(false);
+  const [quickInquiryProduct, setQuickInquiryProduct] = useState<Product | null>(null);
   const [selectedHomepageIds, setSelectedHomepageIds] = useState<string[]>([]);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
@@ -2111,7 +2113,6 @@ export default function App() {
                       <span className="text-white font-mono">{selectedProduct.parts || '-'}</span>
                     </div>
                   </div>
-                  
                   <div className="space-y-8 mb-12">
                     <div>
                       <h4 className="text-xs uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
@@ -2130,31 +2131,9 @@ export default function App() {
                   <div className="mt-auto flex flex-col gap-4">
                     <div className="flex gap-4">
                       <button 
-                        onClick={async () => {
-                          const data = {
-                            country: 'Unknown (Quick Inquiry)',
-                            company: 'N/A',
-                            email: user?.email || 'Anonymous',
-                            name: user?.displayName || 'Interested User',
-                            phone: 'N/A',
-                            requirement: `Interested in ${t(selectedProduct.name)}`,
-                            remarks: `Product URL: ${window.location.origin}/#products`
-                          };
-                          
-                          try {
-                            const response = await fetch('/api/inquiry', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify(data),
-                            });
-                            
-                            if (!response.ok) throw new Error();
-                            toast.success(lang === 'en' ? 'Quick inquiry sent!' : '快速需求已送出！');
-                          } catch (error) {
-                            toast.error(lang === 'en' ? 'Failed to send. Please use the contact form.' : '送出失敗，請使用聯絡表單。');
-                          }
+                        onClick={() => {
+                          setQuickInquiryProduct(selectedProduct);
+                          setIsQuickInquiryModalOpen(true);
                         }}
                         className="cyber-button flex-1 flex items-center justify-center gap-3 py-4 text-center"
                       >
@@ -2178,6 +2157,128 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quick Inquiry Modal */}
+      <AnimatePresence>
+        {isQuickInquiryModalOpen && quickInquiryProduct && (
+          <motion.div 
+            key="quick-inquiry-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[11000] flex items-center justify-center p-6 bg-cyber-dark/95 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-cyber-gray border border-cyber-red p-8 w-full max-w-2xl relative overflow-hidden"
+            >
+              <TechCorner />
+              <button 
+                onClick={() => setIsQuickInquiryModalOpen(false)}
+                className="absolute top-4 right-4 text-white/40 hover:text-cyber-red transition-colors z-10"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="mb-8">
+                <h3 className="text-2xl font-display text-cyber-red mb-2 uppercase tracking-widest flex items-center gap-3">
+                  <Mail /> {lang === 'en' ? 'Quick Inquiry' : '快速諮詢'}
+                </h3>
+                <p className="text-white/40 text-xs font-mono uppercase tracking-widest">
+                  {lang === 'en' ? 'Product' : '產品'}: {t(quickInquiryProduct.name)}
+                </p>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const data = {
+                  country: formData.get('country'),
+                  company: formData.get('company'),
+                  email: formData.get('email'),
+                  name: formData.get('name'),
+                  phone: formData.get('phone'),
+                  requirement: formData.get('requirement'),
+                  remarks: formData.get('remarks')
+                };
+                
+                try {
+                  const response = await fetch('/api/inquiry', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                  });
+                  
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.details || errorData.error || 'Failed to send inquiry');
+                  }
+                  
+                  toast.success(lang === 'en' ? 'Inquiry sent successfully!' : '需求單已成功送出！');
+                  setIsQuickInquiryModalOpen(false);
+                } catch (error: any) {
+                  console.error('Inquiry error:', error);
+                  toast.error(lang === 'en' ? `Failed to send: ${error.message}` : `需求單送出失敗：${error.message}`);
+                }
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Country' : '國家'} *</label>
+                    <select name="country" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
+                      <option value="">{lang === 'en' ? 'Select Country' : '選擇國家'}</option>
+                      {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Company Name' : '公司名稱'}</label>
+                    <input name="company" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Contact Name' : '聯絡人姓名'} *</label>
+                    <input name="name" defaultValue={user?.displayName || ''} required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Email' : '信箱'} *</label>
+                    <input name="email" type="email" defaultValue={user?.email || ''} required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Phone' : '電話'} *</label>
+                  <input name="phone" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Requirement' : '需求'} *</label>
+                  <input 
+                    name="requirement" 
+                    readOnly 
+                    value={lang === 'en' ? `Interested in ${t(quickInquiryProduct.name)}` : `對 ${t(quickInquiryProduct.name)} 有興趣`}
+                    className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white/60 outline-none" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Remarks' : '備註'}</label>
+                  <textarea name="remarks" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red h-24" />
+                </div>
+                
+                <div className="pt-4 flex flex-col gap-2">
+                  <button type="submit" className="cyber-button w-full py-4 font-display uppercase tracking-widest">
+                    {lang === 'en' ? 'Submit Inquiry' : '提交需求'}
+                  </button>
+                  <p className="text-[9px] text-white/30 text-center uppercase tracking-widest">
+                    {lang === 'en' ? 'Your inquiry will be sent to our sales team at wesley723@163.com' : '您的需求將發送至我們的銷售團隊 wesley723@163.com'}
+                  </p>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

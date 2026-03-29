@@ -57,9 +57,14 @@ app.get("/api/test", (req, res) => {
   res.json({ 
     status: "ok", 
     message: "API is alive on Vercel",
-    env: {
-      hasSmtp: !!process.env.SMTP_HOST,
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID
+    diagnostics: {
+      hasSmtpHost: !!process.env.SMTP_HOST,
+      hasSmtpUser: !!process.env.SMTP_USER,
+      hasSmtpPass: !!process.env.SMTP_PASS,
+      hasFirebaseProjectId: !!(process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID),
+      hasFirebaseStorage: !!(process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET),
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV || "unknown"
     }
   });
 });
