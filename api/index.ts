@@ -2,6 +2,7 @@ import express from "express";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import multer from "multer";
+import cors from "cors";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
@@ -47,6 +48,7 @@ function getFirebase() {
 
 // --- Express App Setup ---
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -90,7 +92,8 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-app.post("/api/inquiry", async (req, res) => {
+// Use a more flexible route matching for inquiry
+app.post(["/api/inquiry", "/api/inquiry/", "/inquiry"], async (req, res) => {
   const { country, email, name, phone, requirement } = req.body;
   if (!country || !email || !name || !phone || !requirement) {
     return res.status(400).json({ error: "Missing fields" });
@@ -157,6 +160,11 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Explicitly handle 404 for API
+app.all("/api/*", (req, res) => {
+  res.status(404).json({ error: "API Route Not Found", path: req.path, method: req.method });
 });
 
 export default app;
