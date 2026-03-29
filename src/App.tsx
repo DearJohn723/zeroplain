@@ -1415,7 +1415,7 @@ export default function App() {
               {t(siteContent.hero.tagline)}
             </div>
             <h1 
-              className="text-7xl md:text-[12rem] font-black mb-2 tracking-tighter text-white cyber-glow leading-none glitch-text"
+              className="text-7xl md:text-[12rem] font-black mb-2 leading-none tron-text"
               data-text={t(siteContent.hero.title)}
             >
               {t(siteContent.hero.title)}

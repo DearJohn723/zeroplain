@@ -147,6 +147,22 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 
+  .tron-text {
+    @apply font-display uppercase tracking-tighter;
+    color: transparent;
+    -webkit-text-stroke: 1.5px #fff;
+    filter: drop-shadow(0 0 8px var(--glow-color)) drop-shadow(0 0 15px var(--glow-color));
+    position: relative;
+  }
+
+  .tron-text::before {
+    content: attr(data-text);
+    @apply absolute inset-0 -z-10;
+    -webkit-text-stroke: 4px var(--color-cyber-red);
+    opacity: 0.4;
+    filter: blur(8px);
+  }
+
   .hexagon-grid {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='104' viewBox='0 0 60 104' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l30 17.32v34.64L30 69.28 0 51.96V17.32L30 0z' fill-opacity='0.05' fill='%2300d4ff' fill-rule='evenodd'/%3E%3C/svg%3E");
     background-size: 30px 52px;
