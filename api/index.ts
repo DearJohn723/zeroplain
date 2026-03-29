@@ -115,9 +115,23 @@ app.post("/api/inquiry", async (req, res) => {
   try {
     await transporter.sendMail({
       from: SMTP_USER,
-      to: INQUIRY_DESTINATION_EMAIL || "john@greatidea.tw",
-      subject: `Inquiry from ${name}`,
-      text: JSON.stringify(req.body, null, 2),
+      to: INQUIRY_DESTINATION_EMAIL || "wesley723@163.com",
+      subject: `[Product Inquiry] From ${name} (${country})`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
+          <h2 style="color: #e11d48;">New Product Inquiry</h2>
+          <p><strong>Product/Requirement:</strong> ${requirement}</p>
+          <hr />
+          <p><strong>Contact Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone}</p>
+          <p><strong>Company:</strong> ${req.body.company || 'N/A'}</p>
+          <p><strong>Country:</strong> ${country}</p>
+          <hr />
+          <p><strong>Additional Remarks:</strong></p>
+          <p style="background: #f9f9f9; padding: 10px;">${req.body.remarks || 'No remarks provided.'}</p>
+        </div>
+      `,
     });
     res.json({ success: true });
   } catch (error: any) {
