@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
@@ -37,10 +36,14 @@ function initializeFirebaseAdmin() {
   }
 
   if (!getApps().length && firebaseConfig.projectId) {
-    initializeApp({
-      projectId: firebaseConfig.projectId,
-      storageBucket: firebaseConfig.storageBucket,
-    });
+    try {
+      initializeApp({
+        projectId: firebaseConfig.projectId,
+        storageBucket: firebaseConfig.storageBucket,
+      });
+    } catch (e) {
+      console.error("Firebase Admin initializeApp failed:", e);
+    }
   }
   
   try {
@@ -48,7 +51,7 @@ function initializeFirebaseAdmin() {
     bucket = getStorage().bucket();
     isFirebaseInitialized = true;
   } catch (e) {
-    console.error("Firebase Admin initialization failed:", e);
+    console.error("Firebase Admin services initialization failed:", e);
   }
 }
 
@@ -70,7 +73,8 @@ async function configureApp() {
       env: {
         hasSmtpHost: !!process.env.SMTP_HOST,
         hasSmtpUser: !!process.env.SMTP_USER,
-        nodeEnv: process.env.NODE_ENV
+        nodeEnv: process.env.NODE_ENV,
+        isVercel: !!process.env.VERCEL
       }
     });
   });
@@ -219,6 +223,7 @@ async function configureApp() {
 
   // Vite middleware for development (Skip on Vercel production)
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -227,10 +232,12 @@ async function configureApp() {
   } else if (!process.env.VERCEL) {
     // Only serve static files if we are NOT on Vercel (Vercel handles this)
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
   
   isAppConfigured = true;
