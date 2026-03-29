@@ -1758,15 +1758,16 @@ export default function App() {
                   });
                   
                   if (!response.ok) {
-                    throw new Error('Failed to send inquiry');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.details || errorData.error || 'Failed to send inquiry');
                   }
                   
                   const result = await response.json();
                   toast.success(lang === 'en' ? 'Inquiry sent successfully!' : '需求單已成功送出！');
                   (e.target as HTMLFormElement).reset();
-                } catch (error) {
+                } catch (error: any) {
                   console.error('Inquiry error:', error);
-                  toast.error(lang === 'en' ? 'Failed to send inquiry. Please try again later.' : '需求單送出失敗，請稍後再試。');
+                  toast.error(lang === 'en' ? `Failed to send: ${error.message}` : `需求單送出失敗：${error.message}`);
                 }
               }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1888,11 +1889,14 @@ export default function App() {
                           body: JSON.stringify(data),
                         });
                         
-                        if (!response.ok) throw new Error();
+                        if (!response.ok) {
+                          const errorData = await response.json().catch(() => ({}));
+                          throw new Error(errorData.details || errorData.error || 'Failed to send');
+                        }
                         toast.success(lang === 'en' ? 'Application sent!' : '申請已送出！');
                         (e.target as HTMLFormElement).reset();
-                      } catch (error) {
-                        toast.error(lang === 'en' ? 'Failed to send. Please try again.' : '送出失敗，請稍後再試。');
+                      } catch (error: any) {
+                        toast.error(lang === 'en' ? `Failed to send: ${error.message}` : `送出失敗：${error.message}`);
                       }
                     }} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">

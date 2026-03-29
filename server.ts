@@ -117,11 +117,22 @@ async function startServer() {
     };
 
     try {
+      console.log(`Attempting to send inquiry email via ${SMTP_HOST}:${SMTP_PORT}...`);
       await transporter.sendMail(mailOptions);
+      console.log("Inquiry email sent successfully.");
       res.status(200).json({ success: true, message: "Inquiry sent successfully!" });
-    } catch (error) {
-      console.error("Error sending email:", error);
-      res.status(500).json({ error: "Failed to send inquiry email" });
+    } catch (error: any) {
+      console.error("SMTP Error Details:", {
+        message: error.message,
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        stack: error.stack
+      });
+      res.status(500).json({ 
+        error: "Failed to send inquiry email", 
+        details: error.message 
+      });
     }
   });
 
