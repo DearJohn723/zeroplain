@@ -43,10 +43,9 @@ const bucket = getStorage().bucket();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+export const app = express();
 
+async function configureApp() {
   app.use(express.json());
 
   // API route for fetching all site data (Proxy to Firestore to avoid blocking in China)
@@ -205,10 +204,22 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+}
 
-  app.listen(PORT, "0.0.0.0", () => {
+export async function getApp() {
+  await configureApp();
+  return app;
+}
+
+async function startServer() {
+  const appInstance = await getApp();
+  const PORT = 3000;
+  appInstance.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+// Only start the server if we're not in a serverless environment (like Vercel)
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  startServer();
+}
