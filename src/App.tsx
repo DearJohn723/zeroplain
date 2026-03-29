@@ -184,7 +184,7 @@ function ProductsPage({
   }, [selectedCategory, sortBy]);
 
   return (
-    <div className="pt-32 pb-24 px-6 min-h-screen">
+    <div className="pt-32 pb-24 px-6 min-h-screen relative z-10">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
           <div>
@@ -916,11 +916,11 @@ export default function App() {
     <>
       <ScrollToTop />
       <div className="min-h-screen bg-cyber-dark selection:bg-cyber-red selection:text-white overflow-x-hidden relative">
-      <div className="noise-bg" />
+      <div className="noise-bg pointer-events-none" />
       <div className="hexagon-grid fixed inset-0 opacity-10 pointer-events-none" />
       <HUDOverlay />
       <Toaster position="top-right" theme="dark" richColors />
-      <div className="scanline" />
+      <div className="scanline pointer-events-none" />
 
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-cyber-dark/90 backdrop-blur-md border-b border-cyber-red/20 py-4' : 'bg-transparent py-6'}`}>
@@ -1124,7 +1124,7 @@ export default function App() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-6 z-50 bg-cyber-gray border border-cyber-yellow p-6 w-80 shadow-2xl"
+            className="fixed top-24 right-6 z-[70] bg-cyber-gray border border-cyber-yellow p-6 w-80 shadow-2xl"
           >
             <h3 className="font-display text-cyber-yellow mb-4 flex items-center gap-2">
               <Settings size={16} /> ADMIN CONTROL
@@ -1362,7 +1362,7 @@ export default function App() {
           <Route path="/" element={
             <>
               {/* Hero Section */}
-              <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
+              <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden z-10">
         {/* Animated Grid Background - Removed in favor of global Tron grid */}
         <div className="absolute inset-0 z-0 opacity-0">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
@@ -1481,7 +1481,7 @@ export default function App() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-24 px-6 bg-cyber-gray/30">
+      <section id="about" className="py-24 px-6 bg-cyber-gray/30 relative z-10">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -1543,7 +1543,7 @@ export default function App() {
       </section>
 
       {/* News & Events Section */}
-      <section id="news" className="py-24 px-6 bg-cyber-gray/20">
+      <section id="news" className="py-24 px-6 bg-cyber-gray/20 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-16">
             <h2 className="text-4xl md:text-6xl text-center flex-1">{t(siteContent.nav.news)}</h2>
@@ -1606,7 +1606,7 @@ export default function App() {
       </section>
 
       {/* Products Section */}
-      <section id="products" className="py-24 px-6">
+      <section id="products" className="py-24 px-6 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-end mb-16">
             <div>
@@ -1697,7 +1697,7 @@ export default function App() {
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-24 px-6 bg-black">
+      <section id="contact" className="py-24 px-6 bg-black relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16">
             <div className="relative group">
@@ -1734,8 +1734,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="cyber-card p-8 bg-cyber-gray/20">
-              <form onSubmit={async (e) => {
+            <div className="cyber-card p-8 bg-cyber-gray/20 relative z-10">
+              <form id="contact-form" onSubmit={async (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
                 const data = {
@@ -1772,33 +1772,33 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Country' : '國家'} *</label>
-                    <select name="country" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
+                    <select id="contact-country" name="country" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
                       <option value="">{lang === 'en' ? 'Select Country' : '選擇國家'}</option>
                       {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Company Name' : '公司名稱'}</label>
-                    <input name="company" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                    <input id="contact-company" name="company" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Contact Name' : '聯絡人姓名'} *</label>
-                    <input name="name" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                    <input id="contact-name" name="name" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Email' : '信箱'} *</label>
-                    <input name="email" type="email" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                    <input id="contact-email" name="email" type="email" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Phone' : '電話'} *</label>
-                  <input name="phone" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                  <input id="contact-phone" name="phone" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Requirement' : '需求'} *</label>
-                  <select name="requirement" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
+                  <select id="contact-requirement" name="requirement" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
                     <option value="">{lang === 'en' ? 'Select Requirement' : '選擇需求'}</option>
                     <option value="Interested in Agency">{lang === 'en' ? 'Interested in Agency' : '對產品代理有興趣'}</option>
                     <option value="Want to buy products">{lang === 'en' ? 'Want to buy products' : '想購買任何商品'}</option>
@@ -1809,7 +1809,7 @@ export default function App() {
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Remarks' : '備註'}</label>
-                  <textarea name="remarks" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red h-24" />
+                  <textarea id="contact-remarks" name="remarks" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red h-24" />
                 </div>
                 <button type="submit" className="cyber-button w-full py-4 font-display uppercase tracking-widest">
                   {lang === 'en' ? 'Submit Inquiry' : '提交需求'}
@@ -1822,7 +1822,7 @@ export default function App() {
             </>
           } />
           <Route path="/global-agents" element={
-            <section id="globalAgents" className="py-24 px-6 bg-black min-h-screen pt-32">
+            <section id="globalAgents" className="py-24 px-6 bg-black min-h-screen pt-32 relative z-10">
               <div className="max-w-7xl mx-auto">
                 <div className="relative group mb-16">
                   <h2 className="text-4xl md:text-6xl mb-4 flex items-center gap-4">
@@ -1865,8 +1865,8 @@ export default function App() {
                     <h3 className="text-3xl font-display mb-4">{lang === 'en' ? 'Apply to be an Agent' : '申請成為代理商'}</h3>
                     <p className="text-white/50">{lang === 'en' ? 'Fill out the form below and our team will contact you shortly.' : '請填寫下方表單，我們的團隊將儘快與您聯繫。'}</p>
                   </div>
-                  <div className="cyber-card p-8 bg-cyber-gray/20">
-                    <form onSubmit={async (e) => {
+                  <div className="cyber-card p-8 bg-cyber-gray/20 relative z-10">
+                    <form id="agent-form" onSubmit={async (e) => {
                       e.preventDefault();
                       const formData = new FormData(e.currentTarget);
                       const data = {
@@ -1898,33 +1898,33 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Country' : '國家'} *</label>
-                          <select name="country" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
+                          <select id="agent-country" name="country" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red">
                             <option value="">{lang === 'en' ? 'Select Country' : '選擇國家'}</option>
                             {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Company Name' : '公司名稱'}</label>
-                          <input name="company" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                          <input id="agent-company" name="company" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Contact Name' : '聯絡人姓名'} *</label>
-                          <input name="name" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                          <input id="agent-name" name="name" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                         </div>
                         <div>
                           <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Email' : '信箱'} *</label>
-                          <input name="email" type="email" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                          <input id="agent-email" name="email" type="email" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                         </div>
                       </div>
                       <div>
                         <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Phone' : '電話'} *</label>
-                        <input name="phone" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
+                        <input id="agent-phone" name="phone" required className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red" />
                       </div>
                       <div>
                         <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1">{lang === 'en' ? 'Remarks / Message' : '備註 / 訊息'}</label>
-                        <textarea name="remarks" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red h-24" />
+                        <textarea id="agent-remarks" name="remarks" className="w-full bg-black/50 border border-white/10 p-2 text-sm text-white outline-none focus:border-cyber-red h-24" />
                       </div>
                       <button type="submit" className="cyber-button w-full py-4 font-display uppercase tracking-widest">
                         {lang === 'en' ? 'Send Application' : '發送申請'}
@@ -2262,7 +2262,7 @@ export default function App() {
       <AnimatePresence>
         {(editingProduct || isAddingProduct) && (
           <motion.div 
-            key="product-edit-modal"
+            key={editingProduct ? `edit-${editingProduct.id}` : 'add-product'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2293,7 +2293,12 @@ export default function App() {
                   dimensions: formData.get('dimensions') as string,
                   parts: formData.get('parts') ? Number(formData.get('parts')) : undefined,
                   createdAt: editingProduct?.createdAt || new Date().toISOString(),
-                  colors: tempColors.filter(c => c.name.en || c.name.zh || c.images.length > 0)
+                  colors: tempColors
+                    .filter(c => c.name.en || c.name.zh || c.images.some(img => img.trim() !== ''))
+                    .map(c => ({
+                      ...c,
+                      images: c.images.filter(img => img.trim() !== '')
+                    }))
                 };
                 
                 const salePrice = formData.get('salePrice');
@@ -2415,7 +2420,10 @@ export default function App() {
                               value={color.name.en}
                               onChange={(e) => {
                                 const newColors = [...tempColors];
-                                newColors[index].name.en = e.target.value;
+                                newColors[index] = {
+                                  ...newColors[index],
+                                  name: { ...newColors[index].name, en: e.target.value }
+                                };
                                 setTempColors(newColors);
                               }}
                               placeholder="e.g. Silver"
@@ -2428,7 +2436,10 @@ export default function App() {
                               value={color.name.zh}
                               onChange={(e) => {
                                 const newColors = [...tempColors];
-                                newColors[index].name.zh = e.target.value;
+                                newColors[index] = {
+                                  ...newColors[index],
+                                  name: { ...newColors[index].name, zh: e.target.value }
+                                };
                                 setTempColors(newColors);
                               }}
                               placeholder="e.g. 銀色"
@@ -2443,7 +2454,10 @@ export default function App() {
                             value={color.images.join(', ')}
                             onChange={(e) => {
                               const newColors = [...tempColors];
-                              newColors[index].images = e.target.value.split(',').map(s => s.trim()).filter(s => s !== '');
+                              newColors[index] = {
+                                ...newColors[index],
+                                images: e.target.value.split(',').map(s => s.trim())
+                              };
                               setTempColors(newColors);
                             }}
                             placeholder="https://example.com/color1.jpg, https://example.com/color2.jpg"
@@ -2472,11 +2486,11 @@ export default function App() {
       <AnimatePresence>
         {(editingNews || isAddingNews) && (
           <motion.div 
-            key="news-edit-modal"
+            key={editingNews ? `edit-${editingNews.id}` : 'add-news'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-cyber-dark/95 backdrop-blur-md"
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-cyber-dark/95 backdrop-blur-md"
           >
             <div className="bg-cyber-gray border border-cyber-pink p-8 w-full max-w-xl">
               <div className="flex justify-between items-center mb-8">
@@ -2540,7 +2554,7 @@ export default function App() {
       <AnimatePresence>
         {isEditingHero && (
           <motion.div 
-            key="hero-edit-modal"
+            key={isEditingHero ? 'hero-edit' : 'hero-closed'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2608,7 +2622,7 @@ export default function App() {
       <AnimatePresence>
         {isEditingAbout && (
           <motion.div 
-            key="about-edit-modal"
+            key={isEditingAbout ? 'about-edit' : 'about-closed'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2752,7 +2766,7 @@ export default function App() {
       <AnimatePresence>
         {isEditingGlobalAgents && (
           <motion.div 
-            key="global-agents-edit-modal"
+            key={isEditingGlobalAgents ? 'global-agents-edit' : 'global-agents-closed'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2816,7 +2830,7 @@ export default function App() {
       <AnimatePresence>
         {isEditingHomepageProducts && (
           <motion.div 
-            key="homepage-products-modal"
+            key={isEditingHomepageProducts ? 'homepage-products-edit' : 'homepage-products-closed'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
