@@ -99,7 +99,10 @@ app.post("/api/inquiry", async (req, res) => {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, INQUIRY_DESTINATION_EMAIL } = process.env;
 
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    return res.json({ success: true, message: "SMTP not configured, but inquiry received." });
+    return res.status(500).json({ 
+      error: "SMTP_NOT_CONFIGURED", 
+      message: "Server environment variables for SMTP are missing. Please check Vercel settings." 
+    });
   }
 
   const transporter = nodemailer.createTransport({
