@@ -23,13 +23,19 @@ function getFirebase() {
 
   // 1. Prioritize applet config as it's the source of truth for provisioned projects
   try {
-    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (fs.existsSync(configPath)) {
-      const appletConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      projectId = appletConfig.projectId;
-      storageBucket = appletConfig.storageBucket;
-      firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
-      console.log("Loaded Firebase config from applet-config.json:", { projectId, firestoreDatabaseId });
+    const paths = [
+      path.join(process.cwd(), "firebase-applet-config.json"),
+      path.join(__dirname, "firebase-applet-config.json")
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        const appletConfig = JSON.parse(fs.readFileSync(p, "utf8"));
+        projectId = appletConfig.projectId;
+        storageBucket = appletConfig.storageBucket;
+        firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
+        console.log(`Loaded Firebase config from ${p}:`, { projectId, firestoreDatabaseId });
+        break;
+      }
     }
   } catch (e) {
     console.warn("Could not load firebase-applet-config.json in server:", e);
@@ -55,43 +61,37 @@ function getFirebase() {
         console.log("Firebase Admin initialized with Service Account.");
       } else {
         // Use Application Default Credentials
-        initializeApp({ 
-          credential: applicationDefault(),
-          projectId, 
-          storageBucket 
-        });
-        console.log("Firebase Admin initialized with ADC.");
-      }
-    } catch (e: any) {
-      console.error("Firebase Admin Init Error:", e);
-      // If ADC fails, try initializing with just projectId as a last resort
-      try {
-        if (!getApps().length) {
+        try {
+          initializeApp({ 
+            credential: applicationDefault(),
+            projectId, 
+            storageBucket 
+          });
+          console.log("Firebase Admin initialized with ADC.");
+        } catch (adcError) {
           initializeApp({ projectId, storageBucket });
           console.log("Firebase Admin initialized with projectId only (fallback).");
         }
-      } catch (e2: any) {
-        throw new Error(`Firebase Admin Init Error: ${e.message} (Fallback error: ${e2.message})`);
       }
+    } catch (e: any) {
+      console.error("Firebase Admin Init Error:", e);
     }
   }
 
-  if (getApps().length) {
-    try {
-      const app = getApps()[0];
+  try {
+    const app = getApps()[0];
+    if (app) {
       // Use the specific database ID if provided
       db = firestoreDatabaseId && firestoreDatabaseId !== "(default)" 
         ? getFirestore(app, firestoreDatabaseId)
         : getFirestore(app);
-      bucket = getStorage(app).bucket();
+      bucket = getStorage(app).bucket(storageBucket);
       console.log(`Firestore connected to database: ${firestoreDatabaseId}`);
-    } catch (e: any) {
-      console.error("Firebase Services Init Error:", e);
-      throw new Error(`Firebase Services Init Error: ${e.message}`);
+    } else {
+      console.warn("Firebase Admin not initialized: No apps found.");
     }
-  } else {
-    console.warn("Firebase Admin not initialized: No apps found.");
-    throw new Error("Firebase Admin not initialized: No apps found.");
+  } catch (e: any) {
+    console.error("Firebase Services Init Error:", e);
   }
 
   return { db, bucket };
@@ -119,28 +119,43 @@ app.get("/api/test", (req, res) => {
 });
 
 app.get("/api/data", async (req, res) => {
+  // Force no-cache for this endpoint
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
   try {
     const { db } = getFirebase();
-    if (!db) throw new Error("Firestore database instance is null after initialization");
+    if (!db) throw new Error("Firestore database instance is null after initialization. Please check server logs.");
     
-    // Set cache control to prevent stale data
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-
     console.log("Fetching data from Firestore...");
-    const [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
-      db.collection("products").get(),
-      db.collection("news").get(),
-      db.doc("siteConfig/main").get()
-    ]);
+    let productsSnap, newsSnap, siteConfigSnap;
+    
+    try {
+      [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
+        db.collection("products").get(),
+        db.collection("news").get(),
+        db.doc("siteConfig/main").get()
+      ]);
+    } catch (firestoreError: any) {
+      console.error("Firestore Fetch Error:", firestoreError);
+      if (firestoreError.message.includes("PERMISSION_DENIED")) {
+        throw new Error(`PERMISSION_DENIED: The server does not have permission to access Firestore. 
+          1. If on Vercel, ensure FIREBASE_SERVICE_ACCOUNT is set.
+          2. Ensure the Service Account has 'Cloud Datastore User' role.
+          3. Check if the database ID is correct: ${process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'using default'}.
+          Original error: ${firestoreError.message}`);
+      }
+      throw firestoreError;
+    }
 
     console.log(`Fetched: ${productsSnap.size} products, ${newsSnap.size} news items`);
 
     res.json({
       products: productsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
       news: newsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
-      siteConfig: siteConfigSnap.exists ? siteConfigSnap.data() : null
+      siteConfig: siteConfigSnap.exists ? siteConfigSnap.data() : null,
+      _serverTime: new Date().toISOString()
     });
   } catch (error: any) {
     console.error("API /api/data error:", error);

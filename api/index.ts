@@ -22,18 +22,29 @@ function getFirebase() {
   let storageBucket = "";
   let firestoreDatabaseId = "(default)";
 
-  // 1. Try to load from applet config (might exist in Vercel if included in repo)
+  // 1. Try to load from applet config
   try {
-    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-    if (fs.existsSync(configPath)) {
-      const appletConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-      projectId = appletConfig.projectId;
-      storageBucket = appletConfig.storageBucket;
-      firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
-      console.log("Loaded Firebase config from applet-config.json (Vercel):", { projectId, firestoreDatabaseId });
+    // Try multiple paths for Vercel/Cloud Run compatibility
+    const paths = [
+      path.join(process.cwd(), "firebase-applet-config.json"),
+      path.join(__dirname, "..", "firebase-applet-config.json"),
+      path.join(__dirname, "firebase-applet-config.json")
+    ];
+    
+    let configFound = false;
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        const appletConfig = JSON.parse(fs.readFileSync(p, "utf8"));
+        projectId = appletConfig.projectId;
+        storageBucket = appletConfig.storageBucket;
+        firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
+        console.log(`Loaded Firebase config from ${p}:`, { projectId, firestoreDatabaseId });
+        configFound = true;
+        break;
+      }
     }
   } catch (e) {
-    // Silently fail as this is common on Vercel
+    console.warn("Error reading firebase-applet-config.json:", e);
   }
 
   // 2. Fallback to ENV
@@ -52,7 +63,7 @@ function getFirebase() {
           credential: cert(serviceAccount),
           storageBucket: storageBucket
         });
-        console.log("Firebase Admin initialized with Service Account (Vercel).");
+        console.log("Firebase Admin initialized with Service Account.");
       } else {
         // Try ADC or just projectId
         try {
@@ -61,22 +72,29 @@ function getFirebase() {
             projectId, 
             storageBucket 
           });
-          console.log("Firebase Admin initialized with ADC (Vercel).");
+          console.log("Firebase Admin initialized with ADC.");
         } catch (adcError) {
           initializeApp({ projectId, storageBucket });
-          console.log("Firebase Admin initialized with projectId only (Vercel).");
+          console.log("Firebase Admin initialized with projectId only.");
         }
       }
     } catch (e: any) {
-      console.error("Firebase Admin Init Error (Vercel):", e);
+      console.error("Firebase Admin Init Error:", e);
     }
   }
 
   try {
-    db = getFirestore(firestoreDatabaseId);
-    bucket = getStorage().bucket(storageBucket);
+    const app = getApps()[0];
+    if (app) {
+      // If we have a database ID, use it. If it fails with PERMISSION_DENIED, 
+      // it might be because the service account only has access to (default).
+      db = firestoreDatabaseId && firestoreDatabaseId !== "(default)" 
+        ? getFirestore(app, firestoreDatabaseId)
+        : getFirestore(app);
+      bucket = getStorage(app).bucket(storageBucket);
+    }
   } catch (e) {
-    console.error("Firebase Services Init Error (Vercel):", e);
+    console.error("Firebase Services Init Error:", e);
   }
 
   return { db, bucket };
@@ -120,11 +138,25 @@ app.get("/api/data", async (req, res) => {
       throw new Error(`Database not available. Project ID: ${projectId || 'MISSING'}. Please check Vercel environment variables.`);
     }
     
-    const [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
-      db.collection("products").get(),
-      db.collection("news").get(),
-      db.doc("siteConfig/main").get()
-    ]);
+    let productsSnap, newsSnap, siteConfigSnap;
+    
+    try {
+      [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
+        db.collection("products").get(),
+        db.collection("news").get(),
+        db.doc("siteConfig/main").get()
+      ]);
+    } catch (firestoreError: any) {
+      console.error("Firestore Fetch Error:", firestoreError);
+      if (firestoreError.message.includes("PERMISSION_DENIED")) {
+        throw new Error(`PERMISSION_DENIED: The server does not have permission to access Firestore. 
+          1. If on Vercel, ensure FIREBASE_SERVICE_ACCOUNT is set.
+          2. Ensure the Service Account has 'Cloud Datastore User' role.
+          3. Check if the database ID is correct: ${process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'using default'}.
+          Original error: ${firestoreError.message}`);
+      }
+      throw firestoreError;
+    }
 
     res.json({
       products: productsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
@@ -133,11 +165,11 @@ app.get("/api/data", async (req, res) => {
       _serverTime: new Date().toISOString()
     });
   } catch (error: any) {
-    console.error("API Data Error (Vercel):", error);
+    console.error("API Data Error:", error);
     res.status(500).json({ 
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      hint: "Ensure VITE_FIREBASE_PROJECT_ID is set in Vercel environment variables."
+      hint: "Ensure FIREBASE_SERVICE_ACCOUNT is set in Vercel environment variables if running outside Google Cloud."
     });
   }
 });
