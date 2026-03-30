@@ -551,6 +551,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS);
   const [news, setNews] = useState<NewsItem[]>(DEFAULT_NEWS);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [tempColors, setTempColors] = useState<ProductColor[]>([]);
 
@@ -619,12 +620,14 @@ export default function App() {
       } else {
         setIsAdmin(false);
       }
+      setIsAuthReady(true);
     });
     return () => unsubscribe();
   }, [db]);
 
   const dataLoadedFromProxy = useRef(false);
   const firestoreConnected = useRef(false);
+  const firestoreHasData = useRef(false);
 
   // Real-time Firestore Sync
   useEffect(() => {
@@ -634,9 +637,10 @@ export default function App() {
       return;
     }
 
-    const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap) => {
+    const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap: any) => {
       firestoreConnected.current = true;
       if (docSnap.exists()) {
+        firestoreHasData.current = true;
         const data = docSnap.data() as SiteContent;
         setSiteContent(prev => ({
           ...prev,
@@ -647,7 +651,7 @@ export default function App() {
           homepageProducts: data.homepageProducts || prev.homepageProducts
         }));
         setIsInitialLoading(false);
-      } else if (isAdmin && !hasInitialized) {
+      } else if (!docSnap.metadata?.fromCache && isAuthReady && isAdmin && !hasInitialized) {
         setDoc(doc(db, 'siteConfig', 'main'), DEFAULT_SITE_CONTENT).catch(e => handleFirestoreError(e, OperationType.WRITE, 'siteConfig/main'));
         setHasInitialized(true);
         setIsInitialLoading(false);
@@ -658,12 +662,15 @@ export default function App() {
       }
     });
 
-    const unsubProducts = onSnapshot(query(collection(db, 'products')), (snapshot) => {
+    const unsubProducts = onSnapshot(query(collection(db, 'products')), (snapshot: any) => {
       firestoreConnected.current = true;
       if (!snapshot.empty) {
-        setProducts(snapshot.docs.map(d => d.data() as Product));
-      } else {
-        if (snapshot.metadata.fromCache === false || products.length > 0) {
+        firestoreHasData.current = true;
+        setProducts(snapshot.docs.map((d: any) => d.data() as Product));
+      } else if (!snapshot.metadata?.fromCache && isAuthReady) {
+        // Only clear if we're sure the server says it's empty
+        // and we're not an admin about to seed it, and we haven't loaded from proxy
+        if (!isAdmin && !dataLoadedFromProxy.current) {
           setProducts([]);
         }
         
@@ -681,12 +688,13 @@ export default function App() {
       }
     });
 
-    const unsubNews = onSnapshot(query(collection(db, 'news')), (snapshot) => {
+    const unsubNews = onSnapshot(query(collection(db, 'news')), (snapshot: any) => {
       firestoreConnected.current = true;
       if (!snapshot.empty) {
-        setNews(snapshot.docs.map(d => d.data() as NewsItem).sort((a, b) => b.date.localeCompare(a.date)));
-      } else {
-        if (snapshot.metadata.fromCache === false || news.length > 0) {
+        firestoreHasData.current = true;
+        setNews(snapshot.docs.map((d: any) => d.data() as NewsItem).sort((a, b) => b.date.localeCompare(a.date)));
+      } else if (!snapshot.metadata?.fromCache && isAuthReady) {
+        if (!isAdmin && !dataLoadedFromProxy.current) {
           setNews([]);
         }
         
@@ -706,16 +714,16 @@ export default function App() {
 
     // 1. Immediate Proxy Fetch (for China/unstable connections)
     const fetchProxyData = async () => {
-      if (firestoreConnected.current) return;
+      if (firestoreHasData.current) return;
       
       console.log('Attempting to fetch data via server proxy...');
       try {
         const response = await fetch('/api/data');
-        if (response.ok && !firestoreConnected.current) {
+        if (response.ok && !firestoreHasData.current) {
           const data = await response.json();
-          if (data.products && data.products.length > 0) setProducts(data.products);
-          if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
-          if (data.siteConfig) {
+          if (data.products && data.products.length > 0 && !firestoreHasData.current) setProducts(data.products);
+          if (data.news && data.news.length > 0 && !firestoreHasData.current) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
+          if (data.siteConfig && !firestoreHasData.current) {
             setSiteContent(prev => ({
               ...prev,
               ...data.siteConfig,
@@ -751,7 +759,7 @@ export default function App() {
       unsubProducts();
       unsubNews();
     };
-  }, [isAdmin, isInitialLoading, lang]);
+  }, [isAdmin, isAuthReady, lang, db]);
 
   useEffect(() => {
     console.log('Products state updated:', products.length, 'products found.');
