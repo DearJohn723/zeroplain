@@ -541,6 +541,7 @@ export default function App() {
   const [isEditingContact, setIsEditingContact] = useState(false);
   const [isEditingGlobalAgents, setIsEditingGlobalAgents] = useState(false);
   const [isEditingHomepageProducts, setIsEditingHomepageProducts] = useState(false);
+  const [isConfirmingClearAll, setIsConfirmingClearAll] = useState(false);
   const [isQuickInquiryModalOpen, setIsQuickInquiryModalOpen] = useState(false);
   const [quickInquiryProduct, setQuickInquiryProduct] = useState<Product | null>(null);
   const [selectedHomepageIds, setSelectedHomepageIds] = useState<string[]>([]);
@@ -863,6 +864,33 @@ export default function App() {
       toast.success(lang === 'en' ? 'Product deleted' : '商品已刪除');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
+    }
+  };
+
+  const clearAllProducts = async () => {
+    const isMainAdmin = user?.email?.toLowerCase() === 'john@greatidea.tw';
+    if (!isAdmin || !isMainAdmin) {
+      toast.error(lang === 'en' ? 'Only main admin can perform this action' : '只有主要管理員可以執行此操作');
+      return;
+    }
+
+    try {
+      const productSnap = await getDocs(collection(db, 'products'));
+      if (productSnap.empty) {
+        toast.info(lang === 'en' ? 'No products to clear' : '沒有商品可清除');
+        setIsConfirmingClearAll(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      productSnap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      
+      toast.success(lang === 'en' ? 'All products cleared successfully' : '所有商品已成功清除');
+      setIsConfirmingClearAll(false);
+    } catch (error) {
+      console.error('Clear all products error:', error);
+      toast.error(lang === 'en' ? 'Failed to clear products' : '清除商品失敗');
     }
   };
 
@@ -1354,6 +1382,15 @@ export default function App() {
               >
                 Reset Database to Defaults
               </button>
+
+              {user?.email?.toLowerCase() === 'john@greatidea.tw' && (
+                <button 
+                  onClick={() => { setIsConfirmingClearAll(true); setShowAdminPanel(false); }}
+                  className="w-full py-2 border border-cyber-red text-cyber-red text-xs uppercase tracking-widest hover:bg-cyber-red hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} /> Clear All Products
+                </button>
+              )}
               
               <div className="pt-4 border-t border-white/10">
                 <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">Site Theme (Global)</p>
@@ -1704,15 +1741,25 @@ export default function App() {
               <div className="h-1 w-24 bg-cyber-red" />
             </div>
             {isAdmin && (
-              <button 
-                onClick={() => {
-                  console.log('Homepage: Adding product...');
-                  setIsAddingProduct(true);
-                }}
-                className="cyber-button flex items-center gap-2"
-              >
-                <Plus size={16} /> Add Product
-              </button>
+              <div className="flex gap-4">
+                {user?.email?.toLowerCase() === 'john@greatidea.tw' && (
+                  <button 
+                    onClick={() => setIsConfirmingClearAll(true)}
+                    className="px-6 py-3 border border-cyber-red text-cyber-red text-xs uppercase tracking-widest hover:bg-cyber-red hover:text-white transition-all flex items-center gap-2"
+                  >
+                    <Trash2 size={16} /> 一鍵清除
+                  </button>
+                )}
+                <button 
+                  onClick={() => {
+                    console.log('Homepage: Adding product...');
+                    setIsAddingProduct(true);
+                  }}
+                  className="cyber-button flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Product
+                </button>
+              </div>
             )}
           </div>
 
@@ -2247,6 +2294,47 @@ export default function App() {
                 </div>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Clear All Confirmation Modal */}
+      <AnimatePresence>
+        {isConfirmingClearAll && (
+          <motion.div 
+            key="clear-all-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-cyber-dark/95 backdrop-blur-md"
+          >
+            <div className="bg-cyber-gray border border-cyber-red p-8 w-full max-w-md text-center">
+              <div className="w-20 h-20 bg-cyber-red/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} className="text-cyber-red" />
+              </div>
+              <h3 className="text-2xl font-display text-cyber-red uppercase tracking-widest mb-4">
+                {lang === 'en' ? 'Clear All Products?' : '確定要清除所有商品？'}
+              </h3>
+              <p className="text-white/60 mb-8 leading-relaxed">
+                {lang === 'en' 
+                  ? 'This action is permanent and cannot be undone. All product data will be deleted from the database.' 
+                  : '此操作是永久性的，無法撤銷。所有商品資料將從資料庫中刪除。'}
+              </p>
+              <div className="flex gap-4">
+                <button 
+                  onClick={clearAllProducts}
+                  className="flex-1 py-3 bg-cyber-red text-white font-display uppercase tracking-widest hover:bg-white hover:text-black transition-all"
+                >
+                  {lang === 'en' ? 'Yes, Clear All' : '確定清除'}
+                </button>
+                <button 
+                  onClick={() => setIsConfirmingClearAll(false)}
+                  className="flex-1 py-3 border border-white/10 text-white/50 font-display uppercase tracking-widest hover:bg-white/5 transition-all"
+                >
+                  {lang === 'en' ? 'Cancel' : '取消'}
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
