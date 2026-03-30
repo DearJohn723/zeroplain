@@ -3,7 +3,7 @@ import path from "path";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import multer from "multer";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import fs from "fs";
@@ -52,12 +52,27 @@ function getFirebase() {
           credential: cert(serviceAccount),
           storageBucket: storageBucket
         });
+        console.log("Firebase Admin initialized with Service Account.");
       } else {
-        initializeApp({ projectId, storageBucket });
+        // Use Application Default Credentials
+        initializeApp({ 
+          credential: applicationDefault(),
+          projectId, 
+          storageBucket 
+        });
+        console.log("Firebase Admin initialized with ADC.");
       }
-      console.log("Firebase Admin initialized successfully.");
-    } catch (e) {
+    } catch (e: any) {
       console.error("Firebase Admin Init Error:", e);
+      // If ADC fails, try initializing with just projectId as a last resort
+      try {
+        if (!getApps().length) {
+          initializeApp({ projectId, storageBucket });
+          console.log("Firebase Admin initialized with projectId only (fallback).");
+        }
+      } catch (e2: any) {
+        throw new Error(`Firebase Admin Init Error: ${e.message} (Fallback error: ${e2.message})`);
+      }
     }
   }
 
@@ -70,11 +85,13 @@ function getFirebase() {
         : getFirestore(app);
       bucket = getStorage(app).bucket();
       console.log(`Firestore connected to database: ${firestoreDatabaseId}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Firebase Services Init Error:", e);
+      throw new Error(`Firebase Services Init Error: ${e.message}`);
     }
   } else {
-    console.warn("Firebase Admin not initialized: No projectId found.");
+    console.warn("Firebase Admin not initialized: No apps found.");
+    throw new Error("Firebase Admin not initialized: No apps found.");
   }
 
   return { db, bucket };
@@ -95,7 +112,8 @@ app.get("/api/test", (req, res) => {
     env: {
       hasSmtp: !!process.env.SMTP_HOST,
       isVercel: !!process.env.VERCEL,
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+      hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT
     }
   });
 });
@@ -103,18 +121,21 @@ app.get("/api/test", (req, res) => {
 app.get("/api/data", async (req, res) => {
   try {
     const { db } = getFirebase();
-    if (!db) throw new Error("Database not available");
+    if (!db) throw new Error("Firestore database instance is null after initialization");
     
     // Set cache control to prevent stale data
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
 
+    console.log("Fetching data from Firestore...");
     const [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
       db.collection("products").get(),
       db.collection("news").get(),
       db.doc("siteConfig/main").get()
     ]);
+
+    console.log(`Fetched: ${productsSnap.size} products, ${newsSnap.size} news items`);
 
     res.json({
       products: productsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
@@ -122,7 +143,11 @@ app.get("/api/data", async (req, res) => {
       siteConfig: siteConfigSnap.exists ? siteConfigSnap.data() : null
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("API /api/data error:", error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack
+    });
   }
 });
 
