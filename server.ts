@@ -17,12 +17,27 @@ let bucket: any = null;
 function getFirebase() {
   if (db && bucket) return { db, bucket };
 
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
-  const storageBucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  let projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+  let storageBucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  let firestoreDatabaseId = process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "(default)";
+
+  // Fallback to applet config if ENV is missing
+  if (!projectId) {
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const appletConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+        projectId = appletConfig.projectId;
+        storageBucket = appletConfig.storageBucket;
+        firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
+      }
+    } catch (e) {
+      console.warn("Could not load firebase-applet-config.json in server:", e);
+    }
+  }
 
   if (!getApps().length && projectId) {
     try {
-      // In Vercel, we usually don't have the service account file unless provided via ENV
       const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (serviceAccountVar) {
         const serviceAccount = JSON.parse(serviceAccountVar);
@@ -31,7 +46,6 @@ function getFirebase() {
           storageBucket: storageBucket
         });
       } else {
-        // Fallback to default or just project ID (might fail without credentials)
         initializeApp({ projectId, storageBucket });
       }
     } catch (e) {
@@ -39,11 +53,18 @@ function getFirebase() {
     }
   }
 
-  try {
-    db = getFirestore();
-    bucket = getStorage().bucket();
-  } catch (e) {
-    console.error("Firebase Services Init Error:", e);
+  if (getApps().length) {
+    try {
+      // Use the specific database ID if provided, otherwise default
+      db = firestoreDatabaseId && firestoreDatabaseId !== "(default)" 
+        ? getFirestore(getApps()[0], firestoreDatabaseId)
+        : getFirestore();
+      bucket = getStorage().bucket();
+    } catch (e) {
+      console.error("Firebase Services Init Error:", e);
+    }
+  } else {
+    console.warn("Firebase Admin not initialized: No projectId found.");
   }
 
   return { db, bucket };

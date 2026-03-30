@@ -624,6 +624,7 @@ export default function App() {
   }, [db]);
 
   const dataLoadedFromProxy = useRef(false);
+  const firestoreConnected = useRef(false);
 
   // Real-time Firestore Sync
   useEffect(() => {
@@ -634,18 +635,17 @@ export default function App() {
     }
 
     const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap) => {
-      if (dataLoadedFromProxy.current) return; // Ignore if proxy data is already active
-      
+      firestoreConnected.current = true;
       if (docSnap.exists()) {
         const data = docSnap.data() as SiteContent;
-        setSiteContent({
-          ...DEFAULT_SITE_CONTENT,
+        setSiteContent(prev => ({
+          ...prev,
           ...data,
-          nav: { ...DEFAULT_SITE_CONTENT.nav, ...data.nav },
-          hero: { ...DEFAULT_SITE_CONTENT.hero, ...data.hero },
-          globalAgents: data.globalAgents || DEFAULT_SITE_CONTENT.globalAgents,
-          homepageProducts: data.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
-        });
+          nav: { ...prev.nav, ...data.nav },
+          hero: { ...prev.hero, ...data.hero },
+          globalAgents: data.globalAgents || prev.globalAgents,
+          homepageProducts: data.homepageProducts || prev.homepageProducts
+        }));
         setIsInitialLoading(false);
       } else if (isAdmin && !hasInitialized) {
         setDoc(doc(db, 'siteConfig', 'main'), DEFAULT_SITE_CONTENT).catch(e => handleFirestoreError(e, OperationType.WRITE, 'siteConfig/main'));
@@ -653,20 +653,16 @@ export default function App() {
         setIsInitialLoading(false);
       }
     }, (error) => {
-      if (!dataLoadedFromProxy.current) {
+      if (!dataLoadedFromProxy.current && !firestoreConnected.current) {
         handleFirestoreError(error, OperationType.GET, 'siteConfig/main');
-        // Don't set loading to false immediately, let the timeout/proxy handle it
       }
     });
 
     const unsubProducts = onSnapshot(query(collection(db, 'products')), (snapshot) => {
-      if (dataLoadedFromProxy.current) return;
-      
+      firestoreConnected.current = true;
       if (!snapshot.empty) {
         setProducts(snapshot.docs.map(d => d.data() as Product));
       } else {
-        // Only set empty if we're sure it's not a connection issue
-        // If snapshot is empty but from cache while offline, it might be misleading
         if (snapshot.metadata.fromCache === false || products.length > 0) {
           setProducts([]);
         }
@@ -680,14 +676,13 @@ export default function App() {
         }
       }
     }, (error) => {
-      if (!dataLoadedFromProxy.current) {
+      if (!dataLoadedFromProxy.current && !firestoreConnected.current) {
         handleFirestoreError(error, OperationType.GET, 'products');
       }
     });
 
     const unsubNews = onSnapshot(query(collection(db, 'news')), (snapshot) => {
-      if (dataLoadedFromProxy.current) return;
-      
+      firestoreConnected.current = true;
       if (!snapshot.empty) {
         setNews(snapshot.docs.map(d => d.data() as NewsItem).sort((a, b) => b.date.localeCompare(a.date)));
       } else {
@@ -704,44 +699,51 @@ export default function App() {
         }
       }
     }, (error) => {
-      if (!dataLoadedFromProxy.current) {
+      if (!dataLoadedFromProxy.current && !firestoreConnected.current) {
         handleFirestoreError(error, OperationType.GET, 'news');
       }
     });
 
-    // Add a timeout to force loading to finish if database is unreachable (e.g. in Mainland China)
-    const timeout = setTimeout(async () => {
-      if (isInitialLoading && !dataLoadedFromProxy.current) {
-        console.warn('Firestore connection timeout. Attempting to fetch via server proxy...');
-        try {
-          const response = await fetch('/api/data');
-          if (response.ok) {
-            const data = await response.json();
-            if (data.products && data.products.length > 0) setProducts(data.products);
-            if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
-            if (data.siteConfig) {
-              setSiteContent({
-                ...DEFAULT_SITE_CONTENT,
-                ...data.siteConfig,
-                nav: { ...DEFAULT_SITE_CONTENT.nav, ...data.siteConfig.nav },
-                hero: { ...DEFAULT_SITE_CONTENT.hero, ...data.siteConfig.hero },
-                globalAgents: data.siteConfig.globalAgents || DEFAULT_SITE_CONTENT.globalAgents,
-                homepageProducts: data.siteConfig.homepageProducts || DEFAULT_SITE_CONTENT.homepageProducts
-              });
-            }
-            dataLoadedFromProxy.current = true;
-            setIsInitialLoading(false);
-            toast.success(lang === 'en' ? 'Connected via system proxy.' : '已透過系統代理伺服器連線。');
-          } else {
-            throw new Error('Proxy fetch failed');
+    // 1. Immediate Proxy Fetch (for China/unstable connections)
+    const fetchProxyData = async () => {
+      if (firestoreConnected.current) return;
+      
+      console.log('Attempting to fetch data via server proxy...');
+      try {
+        const response = await fetch('/api/data');
+        if (response.ok && !firestoreConnected.current) {
+          const data = await response.json();
+          if (data.products && data.products.length > 0) setProducts(data.products);
+          if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
+          if (data.siteConfig) {
+            setSiteContent(prev => ({
+              ...prev,
+              ...data.siteConfig,
+              nav: { ...prev.nav, ...data.siteConfig.nav },
+              hero: { ...prev.hero, ...data.siteConfig.hero },
+              globalAgents: data.siteConfig.globalAgents || prev.globalAgents,
+              homepageProducts: data.siteConfig.homepageProducts || prev.homepageProducts
+            }));
           }
-        } catch (e) {
-          console.warn('Proxy fetch failed. Using local defaults.');
+          dataLoadedFromProxy.current = true;
           setIsInitialLoading(false);
-          toast.info(lang === 'en' ? 'Database connection slow. Using local data.' : '資料庫連線較慢，正使用本地預設資料。');
+          console.log('Data successfully loaded via proxy');
         }
+      } catch (e) {
+        console.warn('Proxy fetch failed:', e);
       }
-    }, 4000); // Reduced to 4 seconds for faster fallback
+    };
+
+    fetchProxyData();
+
+    // 2. Fallback timeout to ensure loading finishes
+    const timeout = setTimeout(() => {
+      if (isInitialLoading && !dataLoadedFromProxy.current && !firestoreConnected.current) {
+        console.warn('All data connection attempts timed out. Using local defaults.');
+        setIsInitialLoading(false);
+        toast.info(lang === 'en' ? 'Connection slow. Using local data.' : '連線較慢，正使用本地預設資料。');
+      }
+    }, 8000);
 
     return () => {
       clearTimeout(timeout);
