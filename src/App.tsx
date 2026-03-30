@@ -743,6 +743,12 @@ export default function App() {
           dataLoadedFromProxy.current = true;
           setIsInitialLoading(false);
           console.log('Data successfully loaded via proxy');
+        } else if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+          console.error('Proxy fetch failed with status:', response.status, errorData);
+          if (force) {
+            toast.error(`Server Error: ${errorData.error || response.statusText}`);
+          }
         }
       } catch (e) {
         console.warn('Proxy fetch failed:', e);
@@ -777,7 +783,7 @@ export default function App() {
   }, [isAdmin, isAuthReady, lang, db]);
 
   const refreshData = async () => {
-    toast.loading(lang === 'en' ? 'Refreshing data...' : '正在更新資料...');
+    const loadingToast = toast.loading(lang === 'en' ? 'Refreshing data...' : '正在更新資料...');
     try {
       const response = await fetch(`/api/data?t=${Date.now()}`);
       if (response.ok) {
@@ -794,14 +800,18 @@ export default function App() {
             homepageProducts: data.siteConfig.homepageProducts || prev.homepageProducts
           }));
         }
-        toast.dismiss();
+        toast.dismiss(loadingToast);
         toast.success(lang === 'en' ? 'Data refreshed' : '資料已更新');
       } else {
-        throw new Error('Refresh failed');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+        toast.dismiss(loadingToast);
+        toast.error(`Error: ${errorData.error || 'Refresh failed'}`);
+        console.error('Refresh failed:', errorData);
       }
-    } catch (e) {
-      toast.dismiss();
-      toast.error(lang === 'en' ? 'Failed to refresh data' : '更新資料失敗');
+    } catch (e: any) {
+      toast.dismiss(loadingToast);
+      toast.error(lang === 'en' ? 'Failed to connect to server' : '無法連線至伺服器');
+      console.error('Refresh connection error:', e);
     }
   };
 
