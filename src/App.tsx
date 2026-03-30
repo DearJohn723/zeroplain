@@ -1171,6 +1171,15 @@ export default function App() {
       <Toaster position="top-right" theme="dark" richColors />
       <div className="scanline pointer-events-none" />
 
+      {/* Admin Mode Indicator */}
+      {isAdmin && (
+        <div className="fixed top-0 left-0 w-full h-1 bg-cyber-yellow z-[1000] shadow-[0_0_10px_rgba(255,255,0,0.5)]">
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-cyber-yellow text-black text-[8px] px-2 py-0.5 font-bold uppercase tracking-[0.3em] rounded-b-sm">
+            Admin Mode Active // 管理員模式
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-40 transition-all duration-300 ${scrolled ? 'bg-cyber-dark/90 backdrop-blur-md border-b border-cyber-red/20 py-4' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
@@ -1312,9 +1321,11 @@ export default function App() {
             {isAdmin && (
               <button 
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className="text-cyber-yellow hover:text-white transition-colors"
+                className="flex items-center gap-2 text-cyber-yellow hover:text-white transition-colors"
+                title="Admin Panel"
               >
                 <Settings size={18} />
+                <span className="text-[10px] uppercase tracking-widest hidden sm:inline">Admin</span>
               </button>
             )}
 
@@ -1372,6 +1383,24 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {/* Floating Admin Sync Button */}
+      {isAdmin && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={refreshData}
+          className="fixed bottom-24 right-6 z-[60] w-14 h-14 bg-cyber-blue text-black rounded-full shadow-[0_0_20px_rgba(0,186,255,0.4)] flex items-center justify-center group"
+          title="Force Refresh Data / 同步最新資料"
+        >
+          <ArrowUpDown size={24} className="group-hover:rotate-180 transition-transform duration-500" />
+          <span className="absolute right-16 bg-cyber-blue text-black text-[10px] px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity uppercase font-bold tracking-widest">
+            Force Refresh / 同步最新資料
+          </span>
+        </motion.button>
+      )}
 
       {/* Admin Panel Overlay */}
       <AnimatePresence>
@@ -1792,12 +1821,20 @@ export default function App() {
             {isAdmin && (
               <div className="flex gap-4">
                 {user?.email?.toLowerCase() === 'john@greatidea.tw' && (
-                  <button 
-                    onClick={() => setIsConfirmingClearAll(true)}
-                    className="px-6 py-3 border border-cyber-red text-cyber-red text-xs uppercase tracking-widest hover:bg-cyber-red hover:text-white transition-all flex items-center gap-2"
-                  >
-                    <Trash2 size={16} /> 一鍵清除
-                  </button>
+                  <>
+                    <button 
+                      onClick={refreshData}
+                      className="px-6 py-3 border border-cyber-blue text-cyber-blue text-xs uppercase tracking-widest hover:bg-cyber-blue hover:text-white transition-all flex items-center gap-2"
+                    >
+                      <ArrowUpDown size={16} /> Force Refresh / 同步最新資料
+                    </button>
+                    <button 
+                      onClick={() => setIsConfirmingClearAll(true)}
+                      className="px-6 py-3 border border-cyber-red text-cyber-red text-xs uppercase tracking-widest hover:bg-cyber-red hover:text-white transition-all flex items-center gap-2"
+                    >
+                      <Trash2 size={16} /> 一鍵清除
+                    </button>
+                  </>
                 )}
                 <button 
                   onClick={() => {
