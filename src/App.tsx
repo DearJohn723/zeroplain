@@ -133,6 +133,73 @@ function HUDOverlay() {
   );
 }
 
+function AboutSection({ 
+  siteContent, lang, t, isAdmin, setIsEditingAbout 
+}: { 
+  siteContent: SiteContent; 
+  lang: Language; 
+  t: (obj: any) => string; 
+  isAdmin: boolean;
+  setIsEditingAbout: (b: boolean) => void;
+}) {
+  return (
+    <section id="about" className="py-24 px-6 relative z-10 bg-black/30">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="flex items-center gap-4 mb-8">
+              <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-cyber-red uppercase">
+                {t(siteContent.about.title)}
+              </h2>
+              {isAdmin && (
+                <button 
+                  onClick={() => setIsEditingAbout(true)}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-cyber-red transition-all"
+                  title="Edit About Section"
+                >
+                  <Edit size={20} />
+                </button>
+              )}
+            </div>
+            <div className="h-1 w-24 bg-cyber-red mb-8" />
+            <p className="text-xl text-white/70 leading-relaxed mb-8 font-light">
+              {t(siteContent.about.content)}
+            </p>
+            <div className="grid grid-cols-2 gap-8">
+              <div>
+                <div className="text-cyber-pink font-display text-4xl mb-2">100%</div>
+                <div className="text-xs uppercase tracking-widest text-white/50">Stainless Steel</div>
+              </div>
+              <div>
+                <div className="text-cyber-yellow font-display text-4xl mb-2">50+</div>
+                <div className="text-xs uppercase tracking-widest text-white/50">Unique Designs</div>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative cyber-border p-2"
+          >
+            <GlitchImage 
+              src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
+              alt="Workshop"
+              className="w-full h-[400px] md:h-[500px]"
+            />
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AboutPage({ 
   siteContent, lang, t, isAdmin, setIsEditingAbout 
 }: { 
@@ -584,6 +651,14 @@ export default function App() {
       sessionStorage.removeItem('scrollToContact');
       setTimeout(() => {
         const element = document.getElementById('contact');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    } else if (sessionStorage.getItem('scrollToAbout') === 'true') {
+      sessionStorage.removeItem('scrollToAbout');
+      setTimeout(() => {
+        const element = document.getElementById('about');
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
@@ -1263,7 +1338,7 @@ export default function App() {
                 const routeMap: Record<string, string> = {
                   home: '/',
                   products: '/products',
-                  about: '/about',
+                  about: '/#about',
                   news: '/news',
                   globalAgents: '/global-agents'
                 };
@@ -1274,15 +1349,15 @@ export default function App() {
                     to={routeMap[key] || `/#${key}`}
                     className="font-display text-xs uppercase tracking-widest text-white/70 hover:text-cyber-red transition-colors"
                     onClick={(e) => {
-                      if (key === 'contact') {
+                      if (key === 'about' || key === 'contact') {
                         if (location.pathname === '/') {
                           e.preventDefault();
-                          const element = document.getElementById('contact');
+                          const element = document.getElementById(key);
                           if (element) {
                             element.scrollIntoView({ behavior: 'smooth' });
                           }
                         } else {
-                          sessionStorage.setItem('scrollToContact', 'true');
+                          sessionStorage.setItem(`scrollTo${key.charAt(0).toUpperCase() + key.slice(1)}`, 'true');
                         }
                       } else if (location.pathname === '/' && key === 'home') {
                         e.preventDefault();
@@ -1573,7 +1648,7 @@ export default function App() {
               const routeMap: Record<string, string> = {
                 home: '/',
                 products: '/products',
-                about: '/about',
+                about: '/#about',
                 news: '/news',
                 globalAgents: '/global-agents'
               };
@@ -1585,7 +1660,7 @@ export default function App() {
                   className="font-display text-2xl uppercase tracking-widest text-white hover:text-cyber-red"
                   onClick={(e) => {
                     setIsMenuOpen(false);
-                    if (window.location.pathname === '/' && !routeMap[key] && key !== 'home') {
+                    if (window.location.pathname === '/' && (key === 'about' || key === 'contact')) {
                       e.preventDefault();
                       const element = document.getElementById(key);
                       if (element) {
@@ -1819,6 +1894,15 @@ export default function App() {
           <ChevronRight className="rotate-90" size={32} />
         </div>
       </section>
+
+      {/* About Section */}
+      <AboutSection 
+        siteContent={siteContent} 
+        lang={lang} 
+        t={t} 
+        isAdmin={isAdmin} 
+        setIsEditingAbout={setIsEditingAbout} 
+      />
 
       {/* Products Section */}
       <section id="products" className="py-24 px-6 relative z-10">
