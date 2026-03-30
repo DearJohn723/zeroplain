@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Menu, X, Globe, ChevronRight, 
   Play, Info, Calendar, Newspaper, ArrowRight,
-  Instagram, Twitter, Facebook, Mail, ExternalLink,
+  Instagram, Youtube, Facebook, Mail, ExternalLink,
   Settings, LogIn, LogOut, Plus, Trash2, Edit,
   Check, Layout, ArrowUpDown, Filter, ChevronLeft, Users
 } from 'lucide-react';
@@ -973,11 +973,12 @@ export default function App() {
     toast.success('Logo 已更新');
   };
 
-  const saveContact = async (contactInfo: { en: string; zh: string }) => {
+  const saveContact = async (contactInfo: { en: string; zh: string }, contact?: SiteContent['contact']) => {
     if (!isAdmin) return;
     const newContent = {
       ...siteContent,
-      contactInfo
+      contactInfo,
+      contact
     };
     await setDoc(doc(db, 'siteConfig', 'main'), newContent);
     setIsEditingContact(false);
@@ -1806,19 +1807,19 @@ export default function App() {
                   {siteContent.contactInfo ? t(siteContent.contactInfo) : (lang === 'en' ? 'Contact us for inquiries, partnerships, or support.' : '如有諮詢、合作或支持需求，請聯繫我們。')}
                 </p>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-4 text-white/60">
+                  <a href={`mailto:${siteContent.contact?.email || 'wesley723@163.com'}`} className="flex items-center gap-4 text-white/60 hover:text-white transition-colors">
                     <Mail className="text-cyber-red" size={20} />
-                    <span>wesley723@163.com</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-white/60">
+                    <span>{siteContent.contact?.email || 'wesley723@163.com'}</span>
+                  </a>
+                  <a href={siteContent.contact?.website?.startsWith('http') ? siteContent.contact.website : `https://${siteContent.contact?.website || 'www.zeroplain.com'}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 text-white/60 hover:text-white transition-colors">
                     <Globe className="text-cyber-red" size={20} />
-                    <span>www.zeroplain.com</span>
-                  </div>
+                    <span>{siteContent.contact?.website || 'www.zeroplain.com'}</span>
+                  </a>
                 </div>
                 <div className="flex gap-6 pt-4">
-                  <a href="#" className="text-white/50 hover:text-cyber-red transition-colors"><Twitter size={24} /></a>
-                  <a href="#" className="text-white/50 hover:text-cyber-red transition-colors"><Instagram size={24} /></a>
-                  <a href="#" className="text-white/50 hover:text-cyber-red transition-colors"><Facebook size={24} /></a>
+                  <a href={siteContent.contact?.social?.facebook || '#'} target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-cyber-red transition-colors"><Facebook size={24} /></a>
+                  <a href={siteContent.contact?.social?.instagram || '#'} target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-cyber-red transition-colors"><Instagram size={24} /></a>
+                  <a href={siteContent.contact?.social?.youtube || '#'} target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-cyber-red transition-colors"><Youtube size={24} /></a>
                 </div>
               </div>
             </div>
@@ -2927,14 +2928,22 @@ export default function App() {
                 saveContact({
                   en: formData.get('contact_en') as string,
                   zh: formData.get('contact_zh') as string
+                }, {
+                  email: formData.get('contact_email') as string,
+                  website: formData.get('contact_website') as string,
+                  social: {
+                    facebook: formData.get('social_fb') as string,
+                    instagram: formData.get('social_ig') as string,
+                    youtube: formData.get('social_yt') as string
+                  }
                 });
-              }} className="space-y-6">
+              }} className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
                 <div>
                   <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Contact Introduction (EN)</label>
                   <textarea 
                     name="contact_en" 
                     defaultValue={siteContent.contactInfo?.en} 
-                    className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors h-32" 
+                    className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors h-24" 
                     required
                   />
                 </div>
@@ -2943,9 +2952,56 @@ export default function App() {
                   <textarea 
                     name="contact_zh" 
                     defaultValue={siteContent.contactInfo?.zh} 
-                    className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors h-32" 
+                    className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors h-24" 
                     required
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Email</label>
+                    <input 
+                      name="contact_email" 
+                      defaultValue={siteContent.contact?.email} 
+                      className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Website</label>
+                    <input 
+                      name="contact_website" 
+                      defaultValue={siteContent.contact?.website} 
+                      className="w-full bg-black/50 border border-white/10 p-3 text-white focus:border-cyber-red outline-none transition-colors" 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <label className="block text-xs uppercase tracking-widest text-white/50">Social Media Links</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1">Facebook</label>
+                      <input 
+                        name="social_fb" 
+                        defaultValue={siteContent.contact?.social?.facebook} 
+                        className="w-full bg-black/50 border border-white/10 p-2 text-white focus:border-cyber-red outline-none transition-colors text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1">Instagram</label>
+                      <input 
+                        name="social_ig" 
+                        defaultValue={siteContent.contact?.social?.instagram} 
+                        className="w-full bg-black/50 border border-white/10 p-2 text-white focus:border-cyber-red outline-none transition-colors text-sm" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest text-white/30 mb-1">YouTube</label>
+                      <input 
+                        name="social_yt" 
+                        defaultValue={siteContent.contact?.social?.youtube} 
+                        className="w-full bg-black/50 border border-white/10 p-2 text-white focus:border-cyber-red outline-none transition-colors text-sm" 
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-4">
                   <button type="submit" className="cyber-button flex-1 py-3 font-display uppercase tracking-widest">Save Changes</button>

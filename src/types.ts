@@ -59,6 +59,15 @@ export interface SiteContent {
   };
   logo?: string;
   contactInfo?: { en: string; zh: string };
+  contact?: {
+    email: string;
+    website: string;
+    social: {
+      facebook: string;
+      instagram: string;
+      youtube: string;
+    };
+  };
   homepageProducts?: {
     ids: string[];
     limit: number;

@@ -42,6 +42,15 @@ export const SITE_CONTENT: SiteContent = {
     en: 'Zero Plain is dedicated to providing high-quality stainless steel models and exceptional customer service. Contact us for inquiries, partnerships, or support.',
     zh: '龍零致力于提供高质量的不锈钢模型和卓越的客户服务。如有咨询、合作或支持需求，请联系我们。'
   },
+  contact: {
+    email: 'wesley723@163.com',
+    website: 'www.zeroplain.com',
+    social: {
+      facebook: '#',
+      instagram: '#',
+      youtube: '#'
+    }
+  },
   homepageProducts: {
     ids: [],
     limit: 6
