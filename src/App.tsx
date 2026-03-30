@@ -133,6 +133,164 @@ function HUDOverlay() {
   );
 }
 
+function AboutPage({ 
+  siteContent, lang, t, isAdmin, setIsEditingAbout 
+}: { 
+  siteContent: SiteContent; 
+  lang: Language; 
+  t: (obj: any) => string; 
+  isAdmin: boolean;
+  setIsEditingAbout: (b: boolean) => void;
+}) {
+  return (
+    <div className="pt-32 pb-24 px-6 min-h-screen relative z-10">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="flex items-center gap-4 mb-8">
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-cyber-red uppercase">
+                {t(siteContent.about.title)}
+              </h1>
+              {isAdmin && (
+                <button 
+                  onClick={() => setIsEditingAbout(true)}
+                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-cyber-red transition-all"
+                  title="Edit About Section"
+                >
+                  <Edit size={20} />
+                </button>
+              )}
+            </div>
+            <div className="h-1 w-24 bg-cyber-red mb-8" />
+            <p className="text-xl text-white/70 leading-relaxed mb-8 font-light">
+              {t(siteContent.about.content)}
+            </p>
+            <div className="grid grid-cols-2 gap-8">
+              <div>
+                <div className="text-cyber-pink font-display text-4xl mb-2">100%</div>
+                <div className="text-xs uppercase tracking-widest text-white/50">Stainless Steel</div>
+              </div>
+              <div>
+                <div className="text-cyber-yellow font-display text-4xl mb-2">50+</div>
+                <div className="text-xs uppercase tracking-widest text-white/50">Unique Designs</div>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            className="relative cyber-border p-2"
+          >
+            <GlitchImage 
+              src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
+              alt="Workshop"
+              className="w-full h-[600px]"
+            />
+            {isAdmin && (
+              <div className="absolute bottom-4 right-4 flex gap-2">
+                <button 
+                  onClick={() => setIsEditingAbout(true)}
+                  className="p-3 bg-cyber-red text-white rounded-full shadow-lg hover:bg-white hover:text-cyber-red transition-all z-20"
+                  title="Edit About Section"
+                >
+                  <Edit size={20} />
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewsPage({ 
+  news, lang, t, isAdmin, setIsAddingNews, setEditingNews, deleteNews, siteContent 
+}: { 
+  news: NewsItem[]; 
+  lang: Language; 
+  t: (obj: any) => string; 
+  isAdmin: boolean;
+  setIsAddingNews: (b: boolean) => void;
+  setEditingNews: (n: NewsItem) => void;
+  deleteNews: (id: string) => void;
+  siteContent: SiteContent;
+}) {
+  return (
+    <div className="pt-32 pb-24 px-6 min-h-screen relative z-10">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-16">
+          <div>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white uppercase">
+              {t(siteContent.nav.news)}
+            </h1>
+            <div className="h-1 w-24 bg-cyber-red mt-4" />
+          </div>
+          {isAdmin && (
+            <button 
+              onClick={() => setIsAddingNews(true)}
+              className="cyber-button flex items-center gap-2"
+            >
+              <Plus size={16} /> {lang === 'en' ? 'Add News' : '新增消息'}
+            </button>
+          )}
+        </div>
+        
+        <div className="grid md:grid-cols-2 gap-12">
+          <div>
+            <div className="flex items-center gap-4 mb-8">
+              <Newspaper className="text-cyber-pink" />
+              <h3 className="text-2xl">{lang === 'en' ? 'Latest News' : '最新消息'}</h3>
+            </div>
+            <div className="space-y-6">
+              {news.filter(n => n.type === 'news').map(item => (
+                <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-pink transition-colors">
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
+                      <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
+                    </div>
+                  )}
+                  <div className="text-cyber-pink/60 font-mono text-xs mb-2">{item.date}</div>
+                  <h4 className="text-lg mb-2">{t(item.title)}</h4>
+                  <p className="text-white/60 text-sm">{t(item.content)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-4 mb-8">
+              <Calendar className="text-cyber-yellow" />
+              <h3 className="text-2xl">{lang === 'en' ? 'Upcoming Events' : '近期活動'}</h3>
+            </div>
+            <div className="space-y-6">
+              {news.filter(n => n.type === 'event').map(item => (
+                <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-yellow transition-colors">
+                  {isAdmin && (
+                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
+                      <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
+                    </div>
+                  )}
+                  <div className="text-cyber-yellow/60 font-mono text-xs mb-2">{item.date}</div>
+                  <h4 className="text-lg mb-2">{t(item.title)}</h4>
+                  <p className="text-white/60 text-sm">{t(item.content)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProductsPage({ 
   products, lang, t, formatPrice, isAdmin, 
   setEditingProduct, deleteProduct, setSelectedProduct, 
@@ -631,8 +789,15 @@ export default function App() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error(lang === 'en' 
+          ? 'This domain (zeroplain.com) is not authorized in Firebase. Please add it to "Authorized domains" in the Firebase Console.' 
+          : '此網域 (zeroplain.com) 尚未在 Firebase 中獲得授權。請在 Firebase 控制台的「授權網域」中加入此網域。');
+      } else {
+        toast.error(lang === 'en' ? `Login failed: ${error.message}` : `登入失敗：${error.message}`);
+      }
     }
   };
 
@@ -994,10 +1159,18 @@ export default function App() {
                 }
                 
                 // Handle homepage sections (home, about, news, contact)
+                const routeMap: Record<string, string> = {
+                  home: '/',
+                  products: '/products',
+                  about: '/about',
+                  news: '/news',
+                  globalAgents: '/global-agents'
+                };
+
                 return (
                   <Link 
                     key={key} 
-                    to={key === 'home' ? '/' : (['products', 'agent', 'about', 'news'].includes(key) ? `/${key}` : '/')}
+                    to={routeMap[key] || `/#${key}`}
                     className="font-display text-xs uppercase tracking-widest text-white/70 hover:text-cyber-red transition-colors"
                     onClick={(e) => {
                       if (key === 'contact') {
@@ -1261,14 +1434,22 @@ export default function App() {
               }
               
               // Handle homepage sections (home, about, news, contact)
+              const routeMap: Record<string, string> = {
+                home: '/',
+                products: '/products',
+                about: '/about',
+                news: '/news',
+                globalAgents: '/global-agents'
+              };
+
               return (
                 <Link 
                   key={key} 
-                  to={key === 'home' ? '/' : `/#${key}`}
+                  to={routeMap[key] || `/#${key}`}
                   className="font-display text-2xl uppercase tracking-widest text-white hover:text-cyber-red"
                   onClick={(e) => {
                     setIsMenuOpen(false);
-                    if (window.location.pathname === '/' && key !== 'home') {
+                    if (window.location.pathname === '/' && !routeMap[key] && key !== 'home') {
                       e.preventDefault();
                       const element = document.getElementById(key);
                       if (element) {
@@ -1347,6 +1528,27 @@ export default function App() {
       <div className="fixed bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-cyber-red/20 to-transparent pointer-events-none z-0 blur-3xl" />
 
         <Routes>
+          <Route path="/about" element={
+            <AboutPage 
+              siteContent={siteContent} 
+              lang={lang} 
+              t={t} 
+              isAdmin={isAdmin}
+              setIsEditingAbout={setIsEditingAbout}
+            />
+          } />
+          <Route path="/news" element={
+            <NewsPage 
+              news={news} 
+              lang={lang} 
+              t={t} 
+              isAdmin={isAdmin}
+              setIsAddingNews={setIsAddingNews}
+              setEditingNews={setEditingNews}
+              deleteNews={deleteNews}
+              siteContent={siteContent}
+            />
+          } />
           <Route path="/products" element={
             <ProductsPage 
               products={products} 
@@ -1430,15 +1632,15 @@ export default function App() {
               <div className="h-px w-12 bg-cyber-red/50" />
             </div>
             <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
-              <a href="#products" className="cyber-button text-lg px-12 py-5 group relative overflow-hidden">
+              <Link to="/products" className="cyber-button text-lg px-12 py-5 group relative overflow-hidden">
                 <span className="relative z-10 flex items-center gap-2">
                   {t(siteContent.hero.cta)} <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </span>
-              </a>
+              </Link>
               <div className="flex gap-2">
-                <a href="#about" className="px-10 py-5 border border-white/10 text-white font-display text-sm uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2">
+                <Link to="/about" className="px-10 py-5 border border-white/10 text-white font-display text-sm uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2">
                   {t(siteContent.nav.about)} <Plus size={16} />
-                </a>
+                </Link>
                 {isAdmin && (
                   <button 
                     onClick={() => setIsEditingHero(true)}
@@ -1479,131 +1681,6 @@ export default function App() {
 
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 animate-bounce text-cyber-red/50 lg:bottom-20">
           <ChevronRight className="rotate-90" size={32} />
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-24 px-6 bg-cyber-gray/30 relative z-10">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="flex items-center gap-4 mb-8">
-              <h2 className="text-4xl md:text-6xl text-cyber-red">
-                {t(siteContent.about.title)}
-              </h2>
-              {isAdmin && (
-                <button 
-                  onClick={() => setIsEditingAbout(true)}
-                  className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-cyber-red transition-all"
-                  title="Edit About Section"
-                >
-                  <Edit size={20} />
-                </button>
-              )}
-            </div>
-            <p className="text-xl text-white/70 leading-relaxed mb-8 font-light">
-              {t(siteContent.about.content)}
-            </p>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <div className="text-cyber-pink font-display text-4xl mb-2">100%</div>
-                <div className="text-xs uppercase tracking-widest text-white/50">Stainless Steel</div>
-              </div>
-              <div>
-                <div className="text-cyber-yellow font-display text-4xl mb-2">50+</div>
-                <div className="text-xs uppercase tracking-widest text-white/50">Unique Designs</div>
-              </div>
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative cyber-border p-2"
-          >
-            <GlitchImage 
-              src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
-              alt="Workshop"
-              className="w-full h-[500px]"
-            />
-            {isAdmin && (
-              <div className="absolute bottom-4 right-4 flex gap-2">
-                <button 
-                  onClick={() => setIsEditingAbout(true)}
-                  className="p-3 bg-cyber-red text-white rounded-full shadow-lg hover:bg-white hover:text-cyber-red transition-all z-20"
-                  title="Edit About Section"
-                >
-                  <Edit size={20} />
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* News & Events Section */}
-      <section id="news" className="py-24 px-6 bg-cyber-gray/20 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-16">
-            <h2 className="text-4xl md:text-6xl text-center flex-1">{t(siteContent.nav.news)}</h2>
-            {isAdmin && (
-              <button 
-                onClick={() => setIsAddingNews(true)}
-                className="cyber-button flex items-center gap-2"
-              >
-                <Plus size={16} /> Add News
-              </button>
-            )}
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <div className="flex items-center gap-4 mb-8">
-                <Newspaper className="text-cyber-pink" />
-                <h3 className="text-2xl">{lang === 'en' ? 'Latest News' : '最新消息'}</h3>
-              </div>
-              <div className="space-y-6">
-                {news.filter(n => n.type === 'news').map(item => (
-                  <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-pink transition-colors">
-                    {isAdmin && (
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
-                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                    <div className="text-cyber-pink/60 font-mono text-xs mb-2">{item.date}</div>
-                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
-                    <p className="text-white/60 text-sm">{t(item.content)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-4 mb-8">
-                <Calendar className="text-cyber-yellow" />
-                <h3 className="text-2xl">{lang === 'en' ? 'Upcoming Events' : '近期活动'}</h3>
-              </div>
-              <div className="space-y-6">
-                {news.filter(n => n.type === 'event').map(item => (
-                  <div key={item.id} className="cyber-terminal group relative p-6 border-l-2 border-cyber-yellow transition-colors">
-                    {isAdmin && (
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditingNews(item)} className="text-cyber-yellow"><Edit size={14} /></button>
-                        <button onClick={() => deleteNews(item.id)} className="text-cyber-red"><Trash2 size={14} /></button>
-                      </div>
-                    )}
-                    <div className="text-cyber-yellow/60 font-mono text-xs mb-2">{item.date}</div>
-                    <h4 className="text-lg mb-2">{t(item.title)}</h4>
-                    <p className="text-white/60 text-sm">{t(item.content)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
