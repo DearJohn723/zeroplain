@@ -714,17 +714,17 @@ export default function App() {
     });
 
     // 1. Immediate Proxy Fetch (for China/unstable connections)
-    const fetchProxyData = async () => {
-      if (firestoreHasData.current) return;
+    const fetchProxyData = async (force = false) => {
+      if (!force && firestoreHasData.current) return;
       
       console.log('Attempting to fetch data via server proxy...');
       try {
-        const response = await fetch('/api/data');
-        if (response.ok && !firestoreHasData.current) {
+        const response = await fetch(`/api/data?t=${Date.now()}`);
+        if (response.ok && (force || !firestoreHasData.current)) {
           const data = await response.json();
-          if (data.products && data.products.length > 0 && !firestoreHasData.current) setProducts(data.products);
-          if (data.news && data.news.length > 0 && !firestoreHasData.current) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
-          if (data.siteConfig && !firestoreHasData.current) {
+          if (data.products && data.products.length > 0) setProducts(data.products);
+          if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
+          if (data.siteConfig) {
             setSiteContent(prev => ({
               ...prev,
               ...data.siteConfig,
@@ -745,6 +745,13 @@ export default function App() {
 
     fetchProxyData();
 
+    // 3. Periodic Proxy Polling (fallback for unstable real-time sync)
+    const pollInterval = setInterval(() => {
+      if (!firestoreConnected.current || !firestoreHasData.current) {
+        fetchProxyData(true);
+      }
+    }, 30000);
+
     // 2. Fallback timeout to ensure loading finishes
     const timeout = setTimeout(() => {
       if (isInitialLoading && !dataLoadedFromProxy.current && !firestoreConnected.current) {
@@ -756,11 +763,41 @@ export default function App() {
 
     return () => {
       clearTimeout(timeout);
+      clearInterval(pollInterval);
       unsubSite();
       unsubProducts();
       unsubNews();
     };
   }, [isAdmin, isAuthReady, lang, db]);
+
+  const refreshData = async () => {
+    toast.loading(lang === 'en' ? 'Refreshing data...' : '正在更新資料...');
+    try {
+      const response = await fetch(`/api/data?t=${Date.now()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.products) setProducts(data.products);
+        if (data.news) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
+        if (data.siteConfig) {
+          setSiteContent(prev => ({
+            ...prev,
+            ...data.siteConfig,
+            nav: { ...prev.nav, ...data.siteConfig.nav },
+            hero: { ...prev.hero, ...data.siteConfig.hero },
+            globalAgents: data.siteConfig.globalAgents || prev.globalAgents,
+            homepageProducts: data.siteConfig.homepageProducts || prev.homepageProducts
+          }));
+        }
+        toast.dismiss();
+        toast.success(lang === 'en' ? 'Data refreshed' : '資料已更新');
+      } else {
+        throw new Error('Refresh failed');
+      }
+    } catch (e) {
+      toast.dismiss();
+      toast.error(lang === 'en' ? 'Failed to refresh data' : '更新資料失敗');
+    }
+  };
 
   useEffect(() => {
     console.log('Products state updated:', products.length, 'products found.');
@@ -1344,6 +1381,12 @@ export default function App() {
               <Settings size={16} /> ADMIN CONTROL
             </h3>
             <div className="space-y-4">
+              <button 
+                onClick={refreshData}
+                className="w-full py-2 bg-cyber-blue text-black text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
+              >
+                <ArrowUpDown size={14} /> Force Refresh Data
+              </button>
               <button 
                 onClick={() => { 
                   console.log('AdminPanel: Adding product...');

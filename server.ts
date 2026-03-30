@@ -95,6 +95,11 @@ app.get("/api/data", async (req, res) => {
     const { db } = getFirebase();
     if (!db) throw new Error("Database not available");
     
+    // Set cache control to prevent stale data
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     const [productsSnap, newsSnap, siteConfigSnap] = await Promise.all([
       db.collection("products").get(),
       db.collection("news").get(),
