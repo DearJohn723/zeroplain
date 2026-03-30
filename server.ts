@@ -17,23 +17,30 @@ let bucket: any = null;
 function getFirebase() {
   if (db && bucket) return { db, bucket };
 
-  let projectId = process.env.VITE_FIREBASE_PROJECT_ID;
-  let storageBucket = process.env.VITE_FIREBASE_STORAGE_BUCKET;
-  let firestoreDatabaseId = process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "(default)";
+  let projectId = "";
+  let storageBucket = "";
+  let firestoreDatabaseId = "(default)";
 
-  // Fallback to applet config if ENV is missing
-  if (!projectId) {
-    try {
-      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-      if (fs.existsSync(configPath)) {
-        const appletConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        projectId = appletConfig.projectId;
-        storageBucket = appletConfig.storageBucket;
-        firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
-      }
-    } catch (e) {
-      console.warn("Could not load firebase-applet-config.json in server:", e);
+  // 1. Prioritize applet config as it's the source of truth for provisioned projects
+  try {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const appletConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      projectId = appletConfig.projectId;
+      storageBucket = appletConfig.storageBucket;
+      firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
+      console.log("Loaded Firebase config from applet-config.json:", { projectId, firestoreDatabaseId });
     }
+  } catch (e) {
+    console.warn("Could not load firebase-applet-config.json in server:", e);
+  }
+
+  // 2. Fallback to ENV if still missing
+  if (!projectId) {
+    projectId = process.env.VITE_FIREBASE_PROJECT_ID || "";
+    storageBucket = process.env.VITE_FIREBASE_STORAGE_BUCKET || "";
+    firestoreDatabaseId = process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firestoreDatabaseId;
+    if (projectId) console.log("Using Firebase config from environment variables:", { projectId, firestoreDatabaseId });
   }
 
   if (!getApps().length && projectId) {
@@ -48,6 +55,7 @@ function getFirebase() {
       } else {
         initializeApp({ projectId, storageBucket });
       }
+      console.log("Firebase Admin initialized successfully.");
     } catch (e) {
       console.error("Firebase Admin Init Error:", e);
     }
@@ -55,11 +63,13 @@ function getFirebase() {
 
   if (getApps().length) {
     try {
-      // Use the specific database ID if provided, otherwise default
+      const app = getApps()[0];
+      // Use the specific database ID if provided
       db = firestoreDatabaseId && firestoreDatabaseId !== "(default)" 
-        ? getFirestore(getApps()[0], firestoreDatabaseId)
-        : getFirestore();
-      bucket = getStorage().bucket();
+        ? getFirestore(app, firestoreDatabaseId)
+        : getFirestore(app);
+      bucket = getStorage(app).bucket();
+      console.log(`Firestore connected to database: ${firestoreDatabaseId}`);
     } catch (e) {
       console.error("Firebase Services Init Error:", e);
     }
@@ -107,8 +117,8 @@ app.get("/api/data", async (req, res) => {
     ]);
 
     res.json({
-      products: productsSnap.docs.map((d: any) => d.data()),
-      news: newsSnap.docs.map((d: any) => d.data()),
+      products: productsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
+      news: newsSnap.docs.map((d: any) => ({ id: d.id, ...d.data() })),
       siteConfig: siteConfigSnap.exists ? siteConfigSnap.data() : null
     });
   } catch (error: any) {

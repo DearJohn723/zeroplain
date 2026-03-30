@@ -628,7 +628,7 @@ export default function App() {
 
   const dataLoadedFromProxy = useRef(false);
   const firestoreConnected = useRef(false);
-  const firestoreHasData = useRef(false);
+  const firestoreHasServerData = useRef(false);
 
   // Real-time Firestore Sync
   useEffect(() => {
@@ -641,7 +641,9 @@ export default function App() {
     const unsubSite = onSnapshot(doc(db, 'siteConfig', 'main'), (docSnap: any) => {
       firestoreConnected.current = true;
       if (docSnap.exists()) {
-        firestoreHasData.current = true;
+        if (!docSnap.metadata.fromCache) {
+          firestoreHasServerData.current = true;
+        }
         const data = docSnap.data() as SiteContent;
         setSiteContent(prev => ({
           ...prev,
@@ -666,8 +668,10 @@ export default function App() {
     const unsubProducts = onSnapshot(query(collection(db, 'products')), (snapshot: any) => {
       firestoreConnected.current = true;
       if (!snapshot.empty) {
-        firestoreHasData.current = true;
-        setProducts(snapshot.docs.map((d: any) => d.data() as Product));
+        if (!snapshot.metadata.fromCache) {
+          firestoreHasServerData.current = true;
+        }
+        setProducts(snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() } as Product)));
       } else if (!snapshot.metadata?.fromCache && isAuthReady) {
         // Only clear if we're sure the server says it's empty
         // and we're not an admin about to seed it, and we haven't loaded from proxy
@@ -692,8 +696,10 @@ export default function App() {
     const unsubNews = onSnapshot(query(collection(db, 'news')), (snapshot: any) => {
       firestoreConnected.current = true;
       if (!snapshot.empty) {
-        firestoreHasData.current = true;
-        setNews(snapshot.docs.map((d: any) => d.data() as NewsItem).sort((a, b) => b.date.localeCompare(a.date)));
+        if (!snapshot.metadata.fromCache) {
+          firestoreHasServerData.current = true;
+        }
+        setNews(snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() } as NewsItem)).sort((a, b) => b.date.localeCompare(a.date)));
       } else if (!snapshot.metadata?.fromCache && isAuthReady) {
         if (!isAdmin && !dataLoadedFromProxy.current) {
           setNews([]);
@@ -715,12 +721,12 @@ export default function App() {
 
     // 1. Immediate Proxy Fetch (for China/unstable connections)
     const fetchProxyData = async (force = false) => {
-      if (!force && firestoreHasData.current) return;
+      if (!force && firestoreHasServerData.current) return;
       
       console.log('Attempting to fetch data via server proxy...');
       try {
         const response = await fetch(`/api/data?t=${Date.now()}`);
-        if (response.ok && (force || !firestoreHasData.current)) {
+        if (response.ok && (force || !firestoreHasServerData.current)) {
           const data = await response.json();
           if (data.products && data.products.length > 0) setProducts(data.products);
           if (data.news && data.news.length > 0) setNews(data.news.sort((a: any, b: any) => b.date.localeCompare(a.date)));
@@ -747,7 +753,7 @@ export default function App() {
 
     // 3. Periodic Proxy Polling (fallback for unstable real-time sync)
     const pollInterval = setInterval(() => {
-      if (!firestoreConnected.current || !firestoreHasData.current) {
+      if (!firestoreConnected.current || !firestoreHasServerData.current) {
         fetchProxyData(true);
       }
     }, 30000);
