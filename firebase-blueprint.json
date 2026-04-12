@@ -15,7 +15,10 @@
         "youtubeId": { "type": "string" },
         "category": { "type": "object" },
         "weight": { "type": "string" },
+        "netWeight": { "type": "string" },
+        "grossWeight": { "type": "string" },
         "type": { "type": "object" },
+        "subName": { "type": "object" },
         "dimensions": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "colors": {

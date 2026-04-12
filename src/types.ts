@@ -16,7 +16,10 @@ export interface Product {
   youtubeId?: string;
   category: { en: string; zh: string };
   weight?: string;
+  netWeight?: string;
+  grossWeight?: string;
   type?: { en: string; zh: string };
+  subName?: { en: string; zh: string };
   dimensions?: string;
   parts?: number;
   colors?: ProductColor[];

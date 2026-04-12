@@ -68,7 +68,10 @@ export const PRODUCTS: Product[] = [
     images: ['https://picsum.photos/seed/mantis/800/800'],
     category: { en: 'Insect Series', zh: '昆虫系列' },
     weight: '133g',
+    netWeight: '133g',
+    grossWeight: '450g',
     type: { en: 'Bronze', zh: '古铜' },
+    subName: { en: 'War Ram Mantis', zh: '战羯螳螂' },
     dimensions: '162*121*157',
     parts: 116,
     createdAt: '2026-03-01T12:00:00Z'
@@ -82,7 +85,10 @@ export const PRODUCTS: Product[] = [
     images: ['https://picsum.photos/seed/bluemantis/800/800'],
     category: { en: 'Insect Series', zh: '昆虫系列' },
     weight: '133g',
+    netWeight: '133g',
+    grossWeight: '450g',
     type: { en: 'Blue', zh: '蓝色' },
+    subName: { en: 'Cyber Mantis', zh: '赛博螳螂' },
     dimensions: '162*121*157',
     parts: 116,
     createdAt: '2026-03-01T12:00:00Z'

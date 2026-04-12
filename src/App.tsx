@@ -10,10 +10,11 @@ import {
   Play, Info, Calendar, Newspaper, ArrowRight,
   Instagram, Youtube, Facebook, Mail, ExternalLink,
   Settings, LogIn, LogOut, Plus, Trash2, Edit,
-  Check, Layout, ArrowUpDown, Filter, ChevronLeft, Users
+  Check, Layout, ArrowUpDown, Filter, ChevronLeft, Users, Upload
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Language, Product, ProductColor, NewsItem, SiteContent } from './types';
+import { ProductImportModal } from './ProductImportModal';
 import { SITE_CONTENT as DEFAULT_SITE_CONTENT, PRODUCTS as DEFAULT_PRODUCTS, NEWS as DEFAULT_NEWS, COUNTRIES } from './constants';
 import * as OpenCC from 'opencc-js';
 
@@ -601,6 +602,7 @@ export default function App() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isImportingProducts, setIsImportingProducts] = useState(false);
   const [isAddingNews, setIsAddingNews] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [isEditingHero, setIsEditingHero] = useState(false);
@@ -1051,6 +1053,26 @@ export default function App() {
       toast.success(lang === 'en' ? 'Product saved successfully!' : '商品已儲存成功！');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `products/${product.id}`);
+    }
+  };
+
+  const importProducts = async (products: Product[]) => {
+    if (!isAdmin) return;
+    const batch = writeBatch(db);
+    
+    try {
+      products.forEach(product => {
+        const data = JSON.parse(JSON.stringify(product));
+        const docRef = doc(db, 'products', product.id);
+        batch.set(docRef, data);
+      });
+      
+      await batch.commit();
+      toast.success(lang === 'en' ? `Successfully imported ${products.length} products!` : `成功匯入 ${products.length} 個商品！`);
+      refreshData();
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error(lang === 'en' ? 'Failed to import products.' : '匯入商品失敗。');
     }
   };
 
@@ -1516,6 +1538,15 @@ export default function App() {
                 className="w-full py-2 bg-cyber-yellow text-black text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
               >
                 <Plus size={14} /> Add New Product
+              </button>
+              <button 
+                onClick={() => { 
+                  setIsImportingProducts(true); 
+                  setShowAdminPanel(false); 
+                }}
+                className="w-full py-2 bg-cyber-blue text-black text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
+              >
+                <Upload size={14} /> Import Products (CSV)
               </button>
               <button 
                 onClick={() => { setIsAddingNews(true); setShowAdminPanel(false); }}
@@ -2412,9 +2443,19 @@ export default function App() {
 
                   {/* Product Specs Grid */}
                   <div className="grid grid-cols-2 gap-4 mb-8 border-y border-white/5 py-6">
+                    {selectedProduct.subName && (
+                      <div className="flex flex-col gap-1 col-span-2 mb-2">
+                        <span className="text-[10px] uppercase tracking-widest text-white/40">{lang === 'en' ? 'Sub-product Name' : '子产品名称'}</span>
+                        <span className="text-white font-mono">{t(selectedProduct.subName)}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase tracking-widest text-white/40">{lang === 'en' ? 'Weight' : '重量'}</span>
-                      <span className="text-white font-mono">{selectedProduct.weight || '-'}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-white/40">{lang === 'en' ? 'Net Weight' : '净重量'}</span>
+                      <span className="text-white font-mono">{selectedProduct.netWeight || selectedProduct.weight || '-'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] uppercase tracking-widest text-white/40">{lang === 'en' ? 'Gross Weight' : '带包装盒重量'}</span>
+                      <span className="text-white font-mono">{selectedProduct.grossWeight || '-'}</span>
                     </div>
                     <div className="flex flex-col gap-1">
                       <span className="text-[10px] uppercase tracking-widest text-white/40">{lang === 'en' ? 'Type' : '類型'}</span>
@@ -2752,7 +2793,10 @@ export default function App() {
                   images: manualImages.length > 0 ? manualImages : (editingProduct?.images || ['https://picsum.photos/seed/product/800/800']),
                   category: { en: formData.get('cat_en') as string, zh: formData.get('cat_zh') as string },
                   weight: formData.get('weight') as string,
+                  netWeight: formData.get('netWeight') as string,
+                  grossWeight: formData.get('grossWeight') as string,
                   type: { en: formData.get('type_en') as string, zh: formData.get('type_zh') as string },
+                  subName: { en: formData.get('subName_en') as string, zh: formData.get('subName_zh') as string },
                   dimensions: formData.get('dimensions') as string,
                   parts: formData.get('parts') ? Number(formData.get('parts')) : undefined,
                   createdAt: editingProduct?.createdAt || new Date().toISOString(),
@@ -2827,7 +2871,27 @@ export default function App() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-white/50 mb-2">Weight</label>
+                    <label className="block text-xs text-white/50 mb-2">Sub-product Name (EN)</label>
+                    <input name="subName_en" defaultValue={editingProduct?.subName?.en} className="w-full bg-black/50 border border-white/10 p-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Sub-product Name (ZH)</label>
+                    <input name="subName_zh" defaultValue={editingProduct?.subName?.zh} className="w-full bg-black/50 border border-white/10 p-2 text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Net Weight</label>
+                    <input name="netWeight" defaultValue={editingProduct?.netWeight || editingProduct?.weight} className="w-full bg-black/50 border border-white/10 p-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Gross Weight (With Box)</label>
+                    <input name="grossWeight" defaultValue={editingProduct?.grossWeight} className="w-full bg-black/50 border border-white/10 p-2 text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-white/50 mb-2">Legacy Weight (Optional)</label>
                     <input name="weight" defaultValue={editingProduct?.weight} className="w-full bg-black/50 border border-white/10 p-2 text-sm" />
                   </div>
                   <div>
@@ -3010,6 +3074,18 @@ export default function App() {
               </form>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Product Import Modal */}
+      <AnimatePresence>
+        {isImportingProducts && (
+          <ProductImportModal 
+            isOpen={isImportingProducts}
+            onClose={() => setIsImportingProducts(false)}
+            onImport={importProducts}
+            lang={lang}
+          />
         )}
       </AnimatePresence>
 

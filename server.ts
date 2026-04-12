@@ -7,12 +7,18 @@ import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import fs from "fs";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 // --- Firebase Admin Lazy Init ---
 let db: any = null;
 let bucket: any = null;
+let activeProjectId = "";
+let activeDatabaseId = "(default)";
 
 function getFirebase() {
   if (db && bucket) return { db, bucket };
@@ -47,29 +53,38 @@ function getFirebase() {
     storageBucket = process.env.VITE_FIREBASE_STORAGE_BUCKET || "";
     firestoreDatabaseId = process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || firestoreDatabaseId;
     if (projectId) console.log("Using Firebase config from environment variables:", { projectId, firestoreDatabaseId });
+  } else {
+    // Even if projectId was found in file, allow ENV to override database ID if file didn't have it
+    if (firestoreDatabaseId === "(default)" && process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID) {
+      firestoreDatabaseId = process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
+    }
   }
 
-  if (!getApps().length && projectId) {
+  if (!getApps().length && (projectId || process.env.VITE_FIREBASE_PROJECT_ID)) {
+    const finalProjectId = projectId || process.env.VITE_FIREBASE_PROJECT_ID;
     try {
       const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (serviceAccountVar) {
         const serviceAccount = JSON.parse(serviceAccountVar);
         initializeApp({
           credential: cert(serviceAccount),
-          storageBucket: storageBucket
+          storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
         });
         console.log("Firebase Admin initialized with Service Account.");
       } else {
-        // Use Application Default Credentials
+        // Use Application Default Credentials or Project ID fallback
         try {
           initializeApp({ 
             credential: applicationDefault(),
-            projectId, 
-            storageBucket 
+            projectId: finalProjectId, 
+            storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
           });
           console.log("Firebase Admin initialized with ADC.");
         } catch (adcError) {
-          initializeApp({ projectId, storageBucket });
+          initializeApp({ 
+            projectId: finalProjectId, 
+            storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET 
+          });
           console.log("Firebase Admin initialized with projectId only (fallback).");
         }
       }
@@ -86,6 +101,8 @@ function getFirebase() {
         ? getFirestore(app, firestoreDatabaseId)
         : getFirestore(app);
       bucket = getStorage(app).bucket(storageBucket);
+      activeProjectId = projectId;
+      activeDatabaseId = firestoreDatabaseId;
       console.log(`Firestore connected to database: ${firestoreDatabaseId}`);
     } else {
       console.warn("Firebase Admin not initialized: No apps found.");
@@ -141,9 +158,10 @@ app.get("/api/data", async (req, res) => {
       console.error("Firestore Fetch Error:", firestoreError);
       if (firestoreError.message.includes("PERMISSION_DENIED")) {
         throw new Error(`PERMISSION_DENIED: The server does not have permission to access Firestore. 
-          1. If on Vercel, ensure FIREBASE_SERVICE_ACCOUNT is set.
-          2. Ensure the Service Account has 'Cloud Datastore User' role.
-          3. Check if the database ID is correct: ${process.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || 'using default'}.
+          Project ID: ${activeProjectId || 'unknown'}
+          Database ID: ${activeDatabaseId || 'default'}
+          1. Ensure the Service Account has 'Cloud Datastore User' role.
+          2. Check if the database ID is correct.
           Original error: ${firestoreError.message}`);
       }
       throw firestoreError;
