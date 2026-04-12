@@ -90,9 +90,12 @@ function TechCorner({ className = "" }: { className?: string }) {
   );
 }
 
-function GlitchImage({ src, alt, className = "" }: { src: string, alt: string, className?: string }) {
+function GlitchImage({ src, alt, className = "", onClick }: { src: string, alt: string, className?: string, onClick?: () => void }) {
   return (
-    <div className={`relative overflow-hidden group ${className}`}>
+    <div 
+      className={`relative overflow-hidden group ${className} ${onClick ? 'cursor-zoom-in' : ''}`}
+      onClick={onClick}
+    >
       <img src={src} alt={alt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none">
         <div className="absolute inset-0 bg-cyber-red/20 mix-blend-overlay animate-pulse" />
@@ -135,13 +138,14 @@ function HUDOverlay() {
 }
 
 function AboutSection({ 
-  siteContent, lang, t, isAdmin, setIsEditingAbout 
+  siteContent, lang, t, isAdmin, setIsEditingAbout, setFullScreenImage 
 }: { 
   siteContent: SiteContent; 
   lang: Language; 
   t: (obj: any) => string; 
   isAdmin: boolean;
   setIsEditingAbout: (b: boolean) => void;
+  setFullScreenImage: (img: string | null) => void;
 }) {
   return (
     <section id="about" className="py-24 px-6 relative z-10 bg-black/30">
@@ -193,6 +197,7 @@ function AboutSection({
               src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
               alt="Workshop"
               className="w-full h-[400px] md:h-[500px]"
+              onClick={() => setFullScreenImage(siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000")}
             />
           </motion.div>
         </div>
@@ -202,13 +207,14 @@ function AboutSection({
 }
 
 function AboutPage({ 
-  siteContent, lang, t, isAdmin, setIsEditingAbout 
+  siteContent, lang, t, isAdmin, setIsEditingAbout, setFullScreenImage 
 }: { 
   siteContent: SiteContent; 
   lang: Language; 
   t: (obj: any) => string; 
   isAdmin: boolean;
   setIsEditingAbout: (b: boolean) => void;
+  setFullScreenImage: (img: string | null) => void;
 }) {
   return (
     <div className="pt-32 pb-24 px-6 min-h-screen relative z-10">
@@ -258,6 +264,7 @@ function AboutPage({
               src={siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000"} 
               alt="Workshop"
               className="w-full h-[600px]"
+              onClick={() => setFullScreenImage(siteContent.about.image || "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?auto=format&fit=crop&q=80&w=1000")}
             />
             {isAdmin && (
               <div className="absolute bottom-4 right-4 flex gap-2">
@@ -615,6 +622,7 @@ export default function App() {
   const [quickInquiryProduct, setQuickInquiryProduct] = useState<Product | null>(null);
   const [selectedHomepageIds, setSelectedHomepageIds] = useState<string[]>([]);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
 
   // Firestore Data
   const [siteContent, setSiteContent] = useState<SiteContent>(DEFAULT_SITE_CONTENT);
@@ -1777,6 +1785,7 @@ export default function App() {
               t={t} 
               isAdmin={isAdmin}
               setIsEditingAbout={setIsEditingAbout}
+              setFullScreenImage={setFullScreenImage}
             />
           } />
           <Route path="/news" element={
@@ -1933,6 +1942,7 @@ export default function App() {
         t={t} 
         isAdmin={isAdmin} 
         setIsEditingAbout={setIsEditingAbout} 
+        setFullScreenImage={setFullScreenImage}
       />
 
       {/* Products Section */}
@@ -2337,6 +2347,35 @@ export default function App() {
         </div>
       </footer>
 
+      <AnimatePresence>
+        {fullScreenImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-12"
+            onClick={() => setFullScreenImage(null)}
+          >
+            <button 
+              className="absolute top-6 right-6 text-white/50 hover:text-white z-10 p-2 bg-black/50 rounded-full"
+              onClick={() => setFullScreenImage(null)}
+            >
+              <X size={32} />
+            </button>
+            <motion.img 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              src={fullScreenImage} 
+              alt="Full Screen" 
+              className="max-w-full max-h-full object-contain shadow-2xl"
+              referrerPolicy="no-referrer"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Product Detail Modal */}
       <AnimatePresence>
         {selectedProduct && (
@@ -2364,14 +2403,17 @@ export default function App() {
 
               <div className="grid md:grid-cols-2 gap-12 p-8 md:p-12">
                 <div className="space-y-6">
-                  <div className="aspect-square overflow-hidden border border-white/10">
+                  <div className="aspect-square overflow-hidden border border-white/10 cursor-zoom-in group">
                     <img 
                       src={selectedColorIndex !== null && selectedProduct.colors?.[selectedColorIndex] 
                         ? (selectedProduct.colors[selectedColorIndex].images?.[0] || 'https://picsum.photos/seed/product/800/800')
                         : (selectedProduct.images?.[0] || 'https://picsum.photos/seed/product/800/800')} 
                       alt={t(selectedProduct.name)}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       referrerPolicy="no-referrer"
+                      onClick={() => setFullScreenImage(selectedColorIndex !== null && selectedProduct.colors?.[selectedColorIndex] 
+                        ? (selectedProduct.colors[selectedColorIndex].images?.[0] || 'https://picsum.photos/seed/product/800/800')
+                        : (selectedProduct.images?.[0] || 'https://picsum.photos/seed/product/800/800'))}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/product/800/800';
                       }}
@@ -2381,8 +2423,14 @@ export default function App() {
                     {(selectedColorIndex !== null && selectedProduct.colors?.[selectedColorIndex] 
                       ? selectedProduct.colors[selectedColorIndex].images.slice(1) 
                       : selectedProduct.images.slice(1)).map((img, i) => (
-                      <div key={i} className="aspect-square border border-white/10 overflow-hidden">
-                        <img src={img} alt="Detail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <div key={i} className="aspect-square border border-white/10 overflow-hidden cursor-zoom-in group">
+                        <img 
+                          src={img} 
+                          alt="Detail" 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                          referrerPolicy="no-referrer" 
+                          onClick={() => setFullScreenImage(img)}
+                        />
                       </div>
                     ))}
                   </div>

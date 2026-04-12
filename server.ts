@@ -6,6 +6,8 @@ import multer from "multer";
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { initializeApp as initializeClientApp, getApp as getClientApp, getApps as getClientApps } from "firebase/app";
+import { getFirestore as getClientFirestore, collection as getClientCollection, getDocs as getClientDocs, doc as getClientDoc, getDoc as getClientGetDoc } from "firebase/firestore";
 import fs from "fs";
 import { fileURLToPath } from 'url';
 
@@ -17,11 +19,13 @@ dotenv.config();
 // --- Firebase Admin Lazy Init ---
 let db: any = null;
 let bucket: any = null;
+let clientDb: any = null;
 let activeProjectId = "";
 let activeDatabaseId = "(default)";
+let clientConfig: any = null;
 
 function getFirebase() {
-  if (db && bucket) return { db, bucket };
+  if (db && bucket) return { db, bucket, clientDb };
 
   let projectId = "";
   let storageBucket = "";
@@ -39,6 +43,7 @@ function getFirebase() {
         projectId = appletConfig.projectId;
         storageBucket = appletConfig.storageBucket;
         firestoreDatabaseId = appletConfig.firestoreDatabaseId || "(default)";
+        clientConfig = appletConfig;
         console.log(`Loaded Firebase config from ${p}:`, { projectId, firestoreDatabaseId });
         break;
       }
@@ -74,18 +79,27 @@ function getFirebase() {
       } else {
         // Use Application Default Credentials or Project ID fallback
         try {
+          // Try ADC without explicit projectId first to let it auto-discover from environment
           initializeApp({ 
             credential: applicationDefault(),
-            projectId: finalProjectId, 
             storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
           });
-          console.log("Firebase Admin initialized with ADC.");
+          console.log("Firebase Admin initialized with ADC (auto-discovery).");
         } catch (adcError) {
-          initializeApp({ 
-            projectId: finalProjectId, 
-            storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET 
-          });
-          console.log("Firebase Admin initialized with projectId only (fallback).");
+          try {
+            initializeApp({ 
+              credential: applicationDefault(),
+              projectId: finalProjectId, 
+              storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
+            });
+            console.log("Firebase Admin initialized with ADC and explicit projectId.");
+          } catch (adcError2) {
+            initializeApp({ 
+              projectId: finalProjectId, 
+              storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET 
+            });
+            console.log("Firebase Admin initialized with projectId only (fallback).");
+          }
         }
       }
     } catch (e: any) {
@@ -97,13 +111,25 @@ function getFirebase() {
     const app = getApps()[0];
     if (app) {
       // Use the specific database ID if provided
-      db = firestoreDatabaseId && firestoreDatabaseId !== "(default)" 
-        ? getFirestore(app, firestoreDatabaseId)
-        : getFirestore(app);
+      const dbId = firestoreDatabaseId && firestoreDatabaseId !== "(default)" ? firestoreDatabaseId : undefined;
+      
+      if (dbId) {
+        db = getFirestore(app, dbId);
+      } else {
+        db = getFirestore(app);
+      }
+      
       bucket = getStorage(app).bucket(storageBucket);
-      activeProjectId = projectId;
+      activeProjectId = projectId || (app.options as any).projectId || "unknown";
       activeDatabaseId = firestoreDatabaseId;
-      console.log(`Firestore connected to database: ${firestoreDatabaseId}`);
+      console.log(`Firestore connected to database: ${firestoreDatabaseId} in project: ${activeProjectId}`);
+
+      // Initialize Client SDK as fallback
+      if (clientConfig && !getClientApps().length) {
+        const clientApp = initializeClientApp(clientConfig);
+        clientDb = getClientFirestore(clientApp, firestoreDatabaseId === "(default)" ? undefined : firestoreDatabaseId);
+        console.log("Firebase Client SDK initialized as fallback.");
+      }
     } else {
       console.warn("Firebase Admin not initialized: No apps found.");
     }
@@ -111,7 +137,7 @@ function getFirebase() {
     console.error("Firebase Services Init Error:", e);
   }
 
-  return { db, bucket };
+  return { db, bucket, clientDb };
 }
 
 // --- Express App Setup ---
@@ -135,6 +161,42 @@ app.get("/api/test", (req, res) => {
   });
 });
 
+app.get("/api/diag", async (req, res) => {
+  const results: any = {};
+  try {
+    const app = getApps()[0];
+    if (!app) throw new Error("No Firebase app found");
+    
+    // Test Default Database
+    try {
+      const defaultDb = getFirestore(app);
+      const snap = await defaultDb.collection("products").limit(1).get();
+      results.defaultDb = { status: "ok", size: snap.size };
+    } catch (e: any) {
+      results.defaultDb = { status: "error", message: e.message };
+    }
+
+    // Test Configured Database
+    const { db } = getFirebase();
+    if (db) {
+      try {
+        const snap = await db.collection("products").limit(1).get();
+        results.configuredDb = { status: "ok", size: snap.size, id: activeDatabaseId };
+      } catch (e: any) {
+        results.configuredDb = { status: "error", message: e.message, id: activeDatabaseId };
+      }
+    }
+
+    res.json({
+      activeProjectId,
+      activeDatabaseId,
+      results
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/data", async (req, res) => {
   // Force no-cache for this endpoint
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -155,7 +217,30 @@ app.get("/api/data", async (req, res) => {
         db.doc("siteConfig/main").get()
       ]);
     } catch (firestoreError: any) {
-      console.error("Firestore Fetch Error:", firestoreError);
+      console.error("Firestore Admin Fetch Error:", firestoreError);
+      
+      const { clientDb } = getFirebase();
+      if (clientDb && firestoreError.message.includes("PERMISSION_DENIED")) {
+        console.log("Attempting fallback to Client SDK...");
+        try {
+          const [pSnap, nSnap, sConfigSnap] = await Promise.all([
+            getClientDocs(getClientCollection(clientDb, "products")),
+            getClientDocs(getClientCollection(clientDb, "news")),
+            getClientGetDoc(getClientDoc(clientDb, "siteConfig", "main"))
+          ]);
+          
+          return res.json({
+            products: pSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            news: nSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            siteConfig: sConfigSnap.exists() ? sConfigSnap.data() : null,
+            _serverTime: new Date().toISOString(),
+            _fallback: true
+          });
+        } catch (clientError: any) {
+          console.error("Client SDK Fallback Error:", clientError);
+        }
+      }
+
       if (firestoreError.message.includes("PERMISSION_DENIED")) {
         throw new Error(`PERMISSION_DENIED: The server does not have permission to access Firestore. 
           Project ID: ${activeProjectId || 'unknown'}

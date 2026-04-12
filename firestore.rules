@@ -1,24 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    // Collection: products
-    // Document ID: productId
-    // Fields: id, name, description, details, price, salePrice, images, youtubeId, category, weight, type, dimensions, colors
-    //   - type: object { en, zh }
-    //   - colors: array of { name: { en, zh }, images: array of strings }
-    //
-    // Collection: news
-    // Document ID: newsId
-    // Fields: id, date, title, content, type
-    //
-    // Collection: siteConfig
-    // Document ID: main
-    // Fields: nav, hero, about
-    // ===============================================================
-
     // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
@@ -32,23 +14,28 @@ service cloud.firestore {
 
     // Rules
     match /products/{productId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /news/{newsId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /siteConfig/{configId} {
-      allow read: if true; // Publicly readable
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    match /inquiries/{inquiryId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
     }
   }
 }
