@@ -15,6 +15,7 @@ import {
 import { toast, Toaster } from 'sonner';
 import { Language, Product, ProductColor, NewsItem, SiteContent } from './types';
 import { ProductImportModal } from './ProductImportModal';
+import { LoginModal } from './LoginModal';
 import { SITE_CONTENT as DEFAULT_SITE_CONTENT, PRODUCTS as DEFAULT_PRODUCTS, NEWS as DEFAULT_NEWS, COUNTRIES } from './constants';
 import * as OpenCC from 'opencc-js';
 
@@ -610,6 +611,7 @@ export default function App() {
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isImportingProducts, setIsImportingProducts] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAddingNews, setIsAddingNews] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [isEditingHero, setIsEditingHero] = useState(false);
@@ -677,8 +679,27 @@ export default function App() {
   }, [location.pathname, location.hash]);
 
   useEffect(() => {
+    if (localStorage.getItem('localAdmin') === 'true') {
+      setUser({
+        email: 'admin@zeroplain.com',
+        displayName: 'System Admin',
+        uid: 'admin-local',
+        emailVerified: true,
+        isAnonymous: false,
+        metadata: {},
+        providerData: []
+      } as any);
+      setIsAdmin(true);
+      setIsAuthReady(true);
+      return;
+    }
+
     if (!auth || !db) return;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (localStorage.getItem('localAdmin') === 'true') {
+        setIsAuthReady(true);
+        return;
+      }
       console.log('Auth state changed:', u?.email);
       setUser(u);
       if (u) {
@@ -935,9 +956,14 @@ export default function App() {
   ];
 
   const handleLogin = async () => {
+    setIsLoginModalOpen(true);
+  };
+
+  const triggerGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
+      toast.success(lang === 'en' ? 'Logged in successfully with Google!' : '已成功使用 Google 帳號登入！');
     } catch (error: any) {
       console.error('Login failed:', error);
       if (error.code === 'auth/unauthorized-domain') {
@@ -950,7 +976,27 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => signOut(auth);
+  const handleLocalAdminLogin = () => {
+    setUser({
+      email: 'admin@zeroplain.com',
+      displayName: 'System Admin',
+      uid: 'admin-local',
+      emailVerified: true,
+      isAnonymous: false,
+      metadata: {},
+      providerData: []
+    } as any);
+    setIsAdmin(true);
+    toast.success(lang === 'en' ? 'Administrative Access Granted.' : '管理員權限已開通。');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('localAdmin');
+    setUser(null);
+    setIsAdmin(false);
+    signOut(auth);
+    toast.success(lang === 'en' ? 'Logged out successfully.' : '已成功登出。');
+  };
 
   // Admin Actions
   const seedDatabase = async () => {
@@ -3133,6 +3179,19 @@ export default function App() {
             onClose={() => setIsImportingProducts(false)}
             onImport={importProducts}
             lang={lang}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Login Modal */}
+      <AnimatePresence>
+        {isLoginModalOpen && (
+          <LoginModal 
+            isOpen={isLoginModalOpen}
+            onClose={() => setIsLoginModalOpen(false)}
+            lang={lang}
+            onGoogleLogin={triggerGoogleLogin}
+            onLocalAdminLogin={handleLocalAdminLogin}
           />
         )}
       </AnimatePresence>

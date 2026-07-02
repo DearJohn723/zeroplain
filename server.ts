@@ -77,29 +77,16 @@ function getFirebase() {
         });
         console.log("Firebase Admin initialized with Service Account.");
       } else {
-        // Use Application Default Credentials or Project ID fallback
+        // Initialize with projectId and storageBucket only.
+        // This allows the SDK to target the correct user projectId while still using ADC under the hood for authentication.
         try {
-          // Try ADC without explicit projectId first to let it auto-discover from environment
           initializeApp({ 
-            credential: applicationDefault(),
+            projectId: finalProjectId,
             storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
           });
-          console.log("Firebase Admin initialized with ADC (auto-discovery).");
-        } catch (adcError) {
-          try {
-            initializeApp({ 
-              credential: applicationDefault(),
-              projectId: finalProjectId, 
-              storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET
-            });
-            console.log("Firebase Admin initialized with ADC and explicit projectId.");
-          } catch (adcError2) {
-            initializeApp({ 
-              projectId: finalProjectId, 
-              storageBucket: storageBucket || process.env.VITE_FIREBASE_STORAGE_BUCKET 
-            });
-            console.log("Firebase Admin initialized with projectId only (fallback).");
-          }
+          console.log("Firebase Admin initialized with explicit projectId (ambient ADC):", finalProjectId);
+        } catch (initError: any) {
+          console.error("Firebase Admin initialization failed:", initError);
         }
       }
     } catch (e: any) {
